@@ -493,23 +493,39 @@ body.checkout-page::before {
   width: 100%;
 }
 
+/* Sempre um botão em cima do outro (largura total do card) — não usar row em nenhum breakpoint */
 .product-card__actions {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.6rem;
   margin-top: 0.35rem;
   width: 100%;
+  box-sizing: border-box;
 }
 
 .product-card__actions .btn {
   width: 100%;
+  max-width: 100%;
+  align-self: stretch;
   flex-shrink: 0;
   text-align: center;
   white-space: normal;
+  line-height: 1.25;
+  box-sizing: border-box;
+  padding-top: 0.72rem;
+  padding-bottom: 0.72rem;
 }
 
 .product-card__actions--vip {
   margin-top: 0.65rem;
+}
+
+.product-card--vip .product-card__actions {
+  flex-direction: column;
+  align-items: stretch;
 }
 
 /* Imagem opcional (Carros, Pacotes, etc.) — definir image em data-*.js */
