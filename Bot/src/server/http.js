@@ -465,22 +465,32 @@ function startHttpServer(client) {
 
     const sid = String(s.id || "");
 
+    const footerIcon = client.user?.displayAvatarURL?.({ size: 64 });
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)
-      .setTitle("Transação (staff)")
-      .setDescription(`**${String(itemName).slice(0, 250)}**`)
+      .setTitle("🧾 Compra confirmada · staff")
+      .setDescription(`🛒 **${String(itemName).slice(0, 250)}**`)
       .addFields(
-        { name: "Valor", value: valorLinha.slice(0, 256), inline: false },
-        { name: "Cliente (email / nome / país)", value: custBlock.slice(0, 1024), inline: false },
-        { name: "Meio de pagamento", value: (payBlock || "—").slice(0, 1024), inline: false },
+        { name: "💰 Valor", value: valorLinha.slice(0, 256), inline: false },
+        { name: "👤 Cliente", value: custBlock.slice(0, 1024), inline: false },
+        { name: "💳 Pagamento", value: (payBlock || "—").slice(0, 1024), inline: false },
         {
-          name: "Roblox & Discord",
+          name: "🎮 Roblox · 💬 Discord",
           value: `${robloxBlock}\n${discordBlock}`.slice(0, 1024),
           inline: false,
         },
-        { name: "Detalhes do pedido", value: detalhesPedido.slice(0, 1024), inline: false }
+        { name: "📋 Detalhes do pedido", value: detalhesPedido.slice(0, 1024), inline: false },
+        {
+          name: "🔗 Referência Stripe",
+          value: sid ? `\`${sid}\`` : "—",
+          inline: false,
+        }
       )
-      .setFooter({ text: `${contextLabel} · ${sid}`.slice(0, 450) })
+      .setFooter(
+        footerIcon
+          ? { text: "🔒 Uso interno — equipa Gear UP", iconURL: footerIcon }
+          : { text: "🔒 Uso interno — equipa Gear UP" }
+      )
       .setTimestamp(new Date());
 
     try {
@@ -491,7 +501,7 @@ function startHttpServer(client) {
         allowedMentions: { parse: [] },
       });
       staffFullLogSent.add(session.id);
-      console.log(`[discord] ✓ log detalhado staff — ${session.id}`);
+      console.log(`[discord] ✓ log detalhado staff (${contextLabel}) — ${session.id}`);
       return { ok: true };
     } catch (e) {
       console.error(`[discord] log detalhado staff:`, e.message || e);
