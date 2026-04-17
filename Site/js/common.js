@@ -1,4 +1,14 @@
 function initCommon() {
+  const faviconHref = "assets/gear-up-logo.png";
+  let favicon = document.querySelector("link[rel='icon']");
+  if (!favicon) {
+    favicon = document.createElement("link");
+    favicon.setAttribute("rel", "icon");
+    document.head.appendChild(favicon);
+  }
+  favicon.setAttribute("type", "image/png");
+  favicon.setAttribute("href", faviconHref);
+
   const y = document.getElementById("year");
   if (y) y.textContent = String(new Date().getFullYear());
 
