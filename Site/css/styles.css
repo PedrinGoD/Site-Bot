@@ -501,18 +501,11 @@ body.checkout-page::before {
   width: 100%;
 }
 
-@media (min-width: 480px) {
-  .product-card__actions {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: stretch;
-  }
-
-  .product-card__actions .btn {
-    flex: 1 1 calc(50% - 0.25rem);
-    width: auto;
-    min-width: 0;
-  }
+.product-card__actions .btn {
+  width: 100%;
+  flex-shrink: 0;
+  text-align: center;
+  white-space: normal;
 }
 
 .product-card__actions--vip {
