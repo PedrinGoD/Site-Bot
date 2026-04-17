@@ -32,6 +32,9 @@ function startHttpServer(client) {
   const sessionSigningSecret = (process.env.SESSION_SIGNING_SECRET || secret || "gear-session-dev").trim();
   const allowManualDiscordId = process.env.ALLOW_MANUAL_DISCORD_ID === "true";
   const robloxApiSecret = (process.env.ROBLOX_API_SECRET || "").trim();
+  /** Fallback persistente (Render/heroku: ficheiro em data/ não sobrevive a deploys). */
+  const envSalesLogChannelId = (process.env.SALES_LOG_CHANNEL_ID || "").trim();
+  const envNitroLogChannelId = (process.env.NITRO_LOG_CHANNEL_ID || "").trim();
 
   /** Evita dois avisos no Discord (webhook + página de sucesso) para o mesmo checkout */
   const notifiedStripeSessions = new Set();
@@ -116,12 +119,17 @@ function startHttpServer(client) {
     const cfg = guildConfig.get(guildId);
     const channelId =
       kind === "nitro"
-        ? cfg.nitroLogChannelId || cfg.salesLogChannelId
-        : cfg.salesLogChannelId;
+        ? cfg.nitroLogChannelId ||
+          envNitroLogChannelId ||
+          cfg.salesLogChannelId ||
+          envSalesLogChannelId
+        : cfg.salesLogChannelId || envSalesLogChannelId;
 
     if (!channelId) {
       throw Object.assign(
-        new Error("Canal de log não configurado. Use /setup vendas ou /setup nitro."),
+        new Error(
+          "Canal de log não configurado. Use /setup vendas (ou defina SALES_LOG_CHANNEL_ID no .env / painel do host — recomendado em produção)."
+        ),
         { status: 400 }
       );
     }
