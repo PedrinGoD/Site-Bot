@@ -1,5 +1,5 @@
 /** Cole aqui o link direto da experiência Roblox */
-window.ROBLOX_PLACE_URL = "https://www.roblox.com/pt/games/PLACEHOLDER";
+window.ROBLOX_PLACE_URL = "https://www.roblox.com/pt/games/140001935550545/Gear-Up";
 
 /**
  * Stripe Checkout (chave secreta só no servidor do bot — .env STRIPE_SECRET_KEY).
