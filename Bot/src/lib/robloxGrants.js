@@ -5,23 +5,26 @@ const crypto = require("crypto");
 const dataDir = path.join(__dirname, "../../data");
 const filePath = path.join(dataDir, "roblox-pending-grants.json");
 
-function load() {
+function loadFile() {
   try {
     const raw = fs.readFileSync(filePath, "utf8");
     const j = JSON.parse(raw);
     if (!Array.isArray(j.grants)) {
-      return { grants: [] };
+      return [];
     }
-    return j;
+    return j.grants;
   } catch {
-    return { grants: [] };
+    return [];
   }
 }
 
-function save(data) {
+function saveFile(grants) {
   fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
+  fs.writeFileSync(filePath, JSON.stringify({ grants }, null, 2), "utf8");
 }
+
+/** Fonte de verdade em runtime (Render: disco pode falhar ou estar vazio após deploy). */
+let memoryGrants = loadFile();
 
 const VALID_TIERS = { Bronze: true, Gold: true, Diamante: true };
 
@@ -46,12 +49,11 @@ function queueGrantAfterPayment(params) {
     return null;
   }
   const days = Math.max(0, Math.min(3650, Math.floor(Number(grantDays) || 0)));
-  const data = load();
-  if (data.grants.some((g) => g.stripeSessionId === stripeSessionId)) {
+  if (memoryGrants.some((g) => g.stripeSessionId === stripeSessionId)) {
     return null;
   }
   const id = crypto.randomUUID();
-  data.grants.push({
+  const grant = {
     id,
     robloxUserId: String(robloxUserId),
     grantType: grantType || "vip",
@@ -60,16 +62,20 @@ function queueGrantAfterPayment(params) {
     stripeSessionId,
     createdAt: Date.now(),
     acknowledged: false,
-  });
-  save(data);
+  };
+  memoryGrants.push(grant);
+  try {
+    saveFile(memoryGrants);
+  } catch (e) {
+    console.error("[roblox] aviso: não gravou em disco; grant só em RAM nesta instância:", e.message || e);
+  }
   console.log(`[roblox] fila: grant ${id} UserId=${robloxUserId} ${grantTier} ${days}d (sessão ${stripeSessionId.slice(0, 12)}…)`);
   return id;
 }
 
 function getPendingForRobloxUser(userId) {
   const uid = String(userId);
-  const data = load();
-  return data.grants.filter((g) => g.robloxUserId === uid && !g.acknowledged);
+  return memoryGrants.filter((g) => g.robloxUserId === uid && !g.acknowledged);
 }
 
 function acknowledgeByIds(ids) {
@@ -77,15 +83,18 @@ function acknowledgeByIds(ids) {
     return 0;
   }
   const set = new Set(ids.map(String));
-  const data = load();
   let n = 0;
-  for (const g of data.grants) {
+  for (const g of memoryGrants) {
     if (set.has(g.id) && !g.acknowledged) {
       g.acknowledged = true;
       n += 1;
     }
   }
-  save(data);
+  try {
+    saveFile(memoryGrants);
+  } catch (e) {
+    console.error("[roblox] ack: falha ao gravar disco:", e.message || e);
+  }
   return n;
 }
 

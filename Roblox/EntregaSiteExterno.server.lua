@@ -4,9 +4,10 @@
 
   Pré-requisitos:
   - Game Settings → Security → Allow HTTP requests = ON
-  - Em produção use HTTPS na URL do bot (ou túnel tipo ngrok) e o mesmo host na lista permitida se aplicável
+  - Em produção use HTTPS na URL do bot (ex.: https://bot-gear.onrender.com)
   - No .env do bot: ROBLOX_API_SECRET = (mesmo valor que CONFIG.API_SECRET abaixo)
 
+  NÃO espere um child "VipSalvo" no Player — a entrega grava no DataStore direto.
   Compatível com o teu SistemaAdminVIP / SaveGlobal_V2 / canal AtualizacaoVipAoVivo.
 ]]
 
@@ -16,15 +17,10 @@ local DataStoreService = game:GetService("DataStoreService")
 local MessagingService = game:GetService("MessagingService")
 
 local CONFIG = {
-	-- URL pública HTTPS do bot (OBRIGATÓRIO em produção — localhost NÃO funciona no jogo publicado)
-	-- Mesmo valor que Site/js/config.js → GEAR_STRIPE.apiBase (ex.: https://bot-gear.onrender.com)
 	API_BASE = "https://bot-gear.onrender.com",
-	-- Deve ser IGUAL a ROBLOX_API_SECRET no Render / .env do bot (não commites o secret real)
 	API_SECRET = "COLOQUE_O_MESMO_SECRET_DO_BOT_AQUI",
-	-- Segundos entre tentativas enquanto o jogador está no servidor
 	POLL_INTERVAL = 12,
-	-- Máximo de tentativas por sessão (evita loop infinito se API falhar)
-	MAX_POLLS = 40,
+	MAX_POLLS = 60,
 }
 
 local CANAL_VIP = "AtualizacaoVipAoVivo"
@@ -78,7 +74,6 @@ local function listToVipString(tokens)
 	return table.concat(tokens, ",")
 end
 
---- Replica a lógica do SistemaAdminVIP (UpdateAsync + expiração)
 local function updateDataStoreVip(targetUserId, vipDesejado, diasDesejados)
 	local novaExpiracaoCalculada = 0
 	local ok = false
@@ -141,7 +136,7 @@ local function httpGetPending(userId)
 		},
 	})
 	if not res.Success then
-		error("HTTP " .. tostring(res.StatusCode))
+		error("HTTP " .. tostring(res.StatusCode) .. " " .. tostring(res.Body or ""))
 	end
 	local data = HttpService:JSONDecode(res.Body)
 	if not data or not data.ok then
@@ -164,9 +159,11 @@ local function httpAckGrantIds(grantIds)
 end
 
 local function grantOne(player, g)
-	if g.grantType == "vip" and VIP_LEVELS[g.grantTier] then
+	local grantType = g.grantType or g.grant_type or "vip"
+	local tier = g.grantTier or g.grant_tier
+	if grantType == "vip" and tier and VIP_LEVELS[tier] then
 		local uid = player.UserId
-		local dias = tonumber(g.grantDays) or 0
+		local dias = tonumber(g.grantDays or g.grant_days) or 0
 		if dias < 0 then
 			dias = 0
 		end
@@ -174,11 +171,15 @@ local function grantOne(player, g)
 			dias = 3650
 		end
 
-		local ok, novaExp = updateDataStoreVip(uid, g.grantTier, dias)
+		local ok, novaExp = updateDataStoreVip(uid, tier, dias)
 		if ok then
-			publishVipLive(uid, g.grantTier, novaExp, false)
+			publishVipLive(uid, tier, novaExp, false)
+			print("[EntregaSiteExterno] VIP entregue:", tier, "dias:", dias, "userId:", uid)
 			return true
 		end
+		warn("[EntregaSiteExterno] DataStore UpdateAsync falhou para", tier, uid)
+	elseif tier and not VIP_LEVELS[tier] then
+		warn("[EntregaSiteExterno] tier desconhecido (esperado Bronze/Gold/Diamante):", tier)
 	end
 	return false
 end
@@ -189,9 +190,7 @@ local function runDeliveryLoop(player)
 		return
 	end
 
-	player:WaitForChild("VipSalvo", 120)
-
-	task.wait(4)
+	task.wait(2)
 
 	for poll = 1, CONFIG.MAX_POLLS do
 		if not player.Parent then

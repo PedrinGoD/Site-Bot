@@ -466,6 +466,9 @@ function startHttpServer(client) {
       grantTier: g.grantTier,
       grantDays: g.grantDays,
     }));
+    if (grants.length) {
+      console.log(`[roblox] pending-grants userId=${uid} → ${grants.length} pendente(s)`);
+    }
     return res.json({ ok: true, grants });
   });
 
