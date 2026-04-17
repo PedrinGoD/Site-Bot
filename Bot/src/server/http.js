@@ -350,10 +350,35 @@ function startHttpServer(client) {
   function maybeQueueRobloxGrant(session) {
     const md = session.metadata || {};
     const rid = md.roblox_user_id || md.robloxUserId;
-    const tier = md.grant_tier || md.grantTier;
-    if (!rid || !tier) {
-      return;
+    if (!rid) return;
+
+    const grantsJson = String(md.roblox_grants_json || "").trim();
+    if (grantsJson) {
+      try {
+        const grants = JSON.parse(grantsJson);
+        if (Array.isArray(grants)) {
+          grants.forEach((g, idx) => {
+            const tier = g && g.grantTier ? String(g.grantTier) : "";
+            if (!tier) return;
+            const days = parseInt(String(g.grantDays || "0"), 10);
+            const gtype = String((g && g.grantType) || "vip").trim() || "vip";
+            robloxGrants.queueGrantAfterPayment({
+              stripeSessionId: `${session.id}:${idx}`,
+              robloxUserId: String(rid),
+              grantType: gtype,
+              grantTier: tier,
+              grantDays: days,
+            });
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn("[roblox] roblox_grants_json inválido:", e.message || e);
+      }
     }
+
+    const tier = md.grant_tier || md.grantTier;
+    if (!tier) return;
     const days = parseInt(String(md.grant_days || md.grantDays || "0"), 10);
     const gtype = String(md.grant_type || md.grantType || "vip").trim() || "vip";
     robloxGrants.queueGrantAfterPayment({
@@ -571,37 +596,69 @@ function startHttpServer(client) {
       resolvedDiscordUserId = String(req.body.discordUserId);
     }
 
-    const itemName = String(req.body.itemName || "Item").slice(0, 200);
     const guildId = req.body.guildId || defaultGuildId;
-    let amountCents = parseInt(req.body.amountCents, 10);
-    if (Number.isNaN(amountCents) || amountCents < 50) {
-      amountCents = 100;
-    }
-
     let itemImageUrl = String(req.body.itemImageUrl || "").trim();
-    if (itemImageUrl.length > 500) {
-      itemImageUrl = itemImageUrl.slice(0, 500);
-    }
-    if (itemImageUrl && !/^https?:\/\//i.test(itemImageUrl)) {
-      itemImageUrl = "";
+    if (itemImageUrl.length > 500) itemImageUrl = itemImageUrl.slice(0, 500);
+    if (itemImageUrl && !/^https?:\/\//i.test(itemImageUrl)) itemImageUrl = "";
+
+    /** @type {Array<{ itemName: string, amountCents: number, quantity: number, itemImageUrl?: string, grantTier?: string, grantType?: string, grantDays?: number }>} */
+    let items = [];
+    if (Array.isArray(req.body.items) && req.body.items.length) {
+      items = req.body.items.slice(0, 20).map((raw, idx) => {
+        const itemName = String(raw && raw.itemName ? raw.itemName : `Item ${idx + 1}`).slice(0, 200);
+        let amountCents = parseInt(raw && raw.amountCents, 10);
+        if (Number.isNaN(amountCents) || amountCents < 50) amountCents = 100;
+        let quantity = parseInt(raw && raw.quantity, 10);
+        if (Number.isNaN(quantity) || quantity < 1) quantity = 1;
+        if (quantity > 30) quantity = 30;
+        const grantTier = String((raw && raw.grantTier) || "").trim();
+        const grantType = String((raw && raw.grantType) || "vip").trim().slice(0, 32) || "vip";
+        let grantDays = parseInt(raw && raw.grantDays, 10);
+        if (Number.isNaN(grantDays)) grantDays = 0;
+        grantDays = Math.max(0, Math.min(3650, grantDays));
+        let image = String((raw && raw.itemImageUrl) || "").trim();
+        if (image.length > 500) image = image.slice(0, 500);
+        if (image && !/^https?:\/\//i.test(image)) image = "";
+        return {
+          itemName,
+          amountCents,
+          quantity,
+          itemImageUrl: image || undefined,
+          grantTier: grantTier || undefined,
+          grantType: grantType || undefined,
+          grantDays,
+        };
+      });
+    } else {
+      let amountCents = parseInt(req.body.amountCents, 10);
+      if (Number.isNaN(amountCents) || amountCents < 50) amountCents = 100;
+      const grantTierRaw = String(req.body.grantTier || "").trim();
+      const grantTypeRaw = String(req.body.grantType || "vip").trim().slice(0, 32);
+      let grantDaysRaw = parseInt(req.body.grantDays, 10);
+      if (Number.isNaN(grantDaysRaw)) grantDaysRaw = 0;
+      grantDaysRaw = Math.max(0, Math.min(3650, grantDaysRaw));
+      items = [
+        {
+          itemName: String(req.body.itemName || "Item").slice(0, 200),
+          amountCents,
+          quantity: 1,
+          itemImageUrl: itemImageUrl || undefined,
+          grantTier: grantTierRaw || undefined,
+          grantType: grantTypeRaw || undefined,
+          grantDays: grantDaysRaw,
+        },
+      ];
     }
 
     const robloxUserIdBody = String(req.body.robloxUserId || "").trim();
-    const grantTierRaw = String(req.body.grantTier || "").trim();
-    const grantTypeRaw = String(req.body.grantType || "vip").trim().slice(0, 32);
-    let grantDaysRaw = parseInt(req.body.grantDays, 10);
-    if (Number.isNaN(grantDaysRaw)) {
-      grantDaysRaw = 0;
-    }
-    grantDaysRaw = Math.max(0, Math.min(3650, grantDaysRaw));
-
-    if (grantTierRaw) {
-      if (!robloxGrants.VALID_TIERS[grantTierRaw]) {
+    const grantItems = items.filter((it) => it.grantTier);
+    for (const gi of grantItems) {
+      if (!robloxGrants.VALID_TIERS[String(gi.grantTier)]) {
         return res.status(400).json({ ok: false, error: "grantTier deve ser Bronze, Gold ou Diamante" });
       }
-      if (!robloxUserIdBody || !/^\d{1,20}$/.test(robloxUserIdBody)) {
-        return res.status(400).json({ ok: false, error: "robloxUserId obrigatório para entrega no jogo" });
-      }
+    }
+    if (grantItems.length && (!robloxUserIdBody || !/^\d{1,20}$/.test(robloxUserIdBody))) {
+      return res.status(400).json({ ok: false, error: "robloxUserId obrigatório para entrega no jogo" });
     }
 
     if (!resolvedDiscordUserId || !/^\d{17,20}$/.test(String(resolvedDiscordUserId))) {
@@ -612,36 +669,63 @@ function startHttpServer(client) {
     }
 
     try {
+      const summaryItemName =
+        items.length === 1
+          ? items[0].itemName
+          : `${items.length} itens no carrinho (${items.reduce((acc, it) => acc + it.quantity, 0)} unidade(s))`;
       const meta = {
         discord_user_id: String(resolvedDiscordUserId),
-        item_name: itemName,
+        item_name: summaryItemName.slice(0, 200),
         guild_id: String(guildId),
       };
-      if (itemImageUrl) {
-        meta.item_image_url = itemImageUrl;
+      const firstImage = items.find((it) => it.itemImageUrl)?.itemImageUrl || itemImageUrl;
+      if (firstImage) {
+        meta.item_image_url = firstImage;
       }
-      if (grantTierRaw && robloxUserIdBody) {
+      if (grantItems.length && robloxUserIdBody) {
         meta.roblox_user_id = robloxUserIdBody;
-        meta.grant_type = grantTypeRaw || "vip";
-        meta.grant_tier = grantTierRaw;
-        meta.grant_days = String(grantDaysRaw);
+        if (grantItems.length === 1) {
+          meta.grant_type = grantItems[0].grantType || "vip";
+          meta.grant_tier = grantItems[0].grantTier;
+          meta.grant_days = String(grantItems[0].grantDays || 0);
+        } else {
+          const compact = grantItems.map((g) => ({
+            grantType: g.grantType || "vip",
+            grantTier: g.grantTier,
+            grantDays: g.grantDays || 0,
+          }));
+          const asJson = JSON.stringify(compact);
+          if (asJson.length <= 500) {
+            meta.roblox_grants_json = asJson;
+          }
+        }
+      }
+      const couponCode = String(req.body.couponCode || "").trim().toUpperCase();
+      const discountPercent = parseInt(req.body.discountPercent, 10);
+      const discountCents = parseInt(req.body.discountCents, 10);
+      if (couponCode) {
+        meta.coupon_code = couponCode.slice(0, 50);
+      }
+      if (!Number.isNaN(discountPercent) && discountPercent > 0) {
+        meta.discount_percent = String(Math.min(90, discountPercent));
+      }
+      if (!Number.isNaN(discountCents) && discountCents > 0) {
+        meta.discount_cents = String(Math.min(99999999, discountCents));
       }
 
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         payment_method_types: ["card"],
-        line_items: [
-          {
-            price_data: {
-              currency: "brl",
-              product_data: {
-                name: itemName.slice(0, 120),
-              },
-              unit_amount: amountCents,
+        line_items: items.map((it) => ({
+          price_data: {
+            currency: "brl",
+            product_data: {
+              name: String(it.itemName || "Item").slice(0, 120),
             },
-            quantity: 1,
+            unit_amount: it.amountCents,
           },
-        ],
+          quantity: it.quantity,
+        })),
         metadata: meta,
         // URL sem ".html" evita redirect 301 do servidor estático que costuma perder ?session_id=...
         success_url: `${siteBaseUrl}/pagamento-ok?session_id={CHECKOUT_SESSION_ID}`,

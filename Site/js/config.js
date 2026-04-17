@@ -38,3 +38,9 @@ window.GEAR_CHECKOUT_DEMO = {
   guildId: "",
   demoKey: "",
 };
+
+/**
+ * Cupons de desconto no frontend (percentual).
+ * Ex.: { "GEAR10": 10, "VIP20": 20 }
+ */
+window.GEAR_COUPONS = {};

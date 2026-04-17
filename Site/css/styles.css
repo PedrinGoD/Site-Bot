@@ -1272,3 +1272,43 @@ dialog.gear-demo-checkout[open] {
     row-gap: 0.35rem;
   }
 }
+
+.gear-cart-fab {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1200;
+}
+
+.gear-cart-items {
+  display: grid;
+  gap: 0.65rem;
+  max-height: 260px;
+  overflow: auto;
+  margin-bottom: 0.75rem;
+}
+
+.gear-cart-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  background: var(--surface-2);
+}
+
+.gear-cart-item__actions {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.gear-cart-item__actions .btn {
+  min-width: 34px;
+  padding: 0.3rem 0.5rem;
+}
+
+.gear-cart-coupon {
+  margin-top: 0.4rem;
+}
