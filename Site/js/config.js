@@ -1,6 +1,13 @@
 /** Cole aqui o link direto da experiência Roblox */
 window.ROBLOX_PLACE_URL = "https://www.roblox.com/pt/games/140001935550545/Gear-Up";
 
+/** Versão mostrada no rodapé + convite/link do Discord de suporte (opcional). */
+window.GEAR_SITE = {
+  version: "1.3.0",
+  /** Ex.: "https://discord.gg/SEU_CONVITE" — deixa vazio para esconder o link no rodapé. */
+  supportDiscordUrl: "",
+};
+
 /**
  * Stripe Checkout (chave secreta só no servidor do bot — .env STRIPE_SECRET_KEY).
  * Chave publicável (pk_test_...) não é obrigatória neste fluxo (redirecionamento ao Stripe).

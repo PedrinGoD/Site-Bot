@@ -11,6 +11,13 @@ const {
 } = require("../lib/sessionToken");
 const robloxGrants = require("../lib/robloxGrants");
 
+let botPackageVersion = "0.0.0";
+try {
+  botPackageVersion = require("../../package.json").version;
+} catch (_) {
+  /* ignore */
+}
+
 /**
  * @param {import('discord.js').Client} client
  */
@@ -1102,6 +1109,9 @@ function startHttpServer(client) {
   app.get("/health", (_req, res) => {
     res.json({
       ok: true,
+      time: new Date().toISOString(),
+      uptimeSeconds: Math.floor(process.uptime()),
+      version: String(process.env.GEAR_BOT_VERSION || botPackageVersion || "unknown"),
       bot: client.user?.tag || "starting",
       demo: Boolean(demoSaleKey),
       stripe: Boolean(stripeSecretKey),
@@ -1121,7 +1131,7 @@ function startHttpServer(client) {
         "[discord] SALES_LOG_CHANNEL_ID vazio — vendas Stripe não têm canal. No Render: Environment (o .env local não sobe no deploy)."
       );
     }
-    console.log(`HTTP webhook em http://0.0.0.0:${port}  (POST /webhooks/venda)`);
+    console.log(`HTTP webhook em http://0.0.0.0:${port}  (GET /health  |  POST /webhooks/venda)`);
     if (demoSaleKey) {
       console.log(`  + demo: POST /webhooks/demo-venda  (header X-Demo-Key)`);
     }

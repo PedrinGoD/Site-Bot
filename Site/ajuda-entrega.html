@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Gear UP — Não recebi a compra no Roblox: checklist e suporte." />
+    <title>Ajuda — Entrega no jogo — Gear UP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="fire-glow" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="index.html">
+          <img src="assets/gear-up-logo.png" alt="Gear UP" width="48" height="48" class="brand__logo" />
+          <span class="brand__text">Gear UP</span>
+        </a>
+        <nav class="nav" aria-label="Principal">
+          <a href="index.html" class="nav__link">Início</a>
+          <a href="vip.html" class="nav__link">VIP</a>
+          <a href="carros.html" class="nav__link">Carros</a>
+          <a href="pacotes.html" class="nav__link">Pacotes</a>
+          <a href="checkout.html" class="nav__link">Checkout</a>
+          <a href="#" class="nav__cta js-roblox-link">Jogar</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page-main">
+      <header class="page-head">
+        <p class="page-head__eyebrow">Suporte</p>
+        <h1 class="page-head__title">Não recebi no jogo</h1>
+        <p class="page-head__lead">
+          Segue esta ordem — na maior parte dos casos resolve em menos de um minuto.
+        </p>
+      </header>
+
+      <section class="section section--shop-page" style="max-width: 720px; margin: 0 auto">
+        <ol class="help-checklist" style="line-height: 1.65; padding-left: 1.25rem">
+          <li>
+            <strong>Confirma o ID Roblox no checkout.</strong> Tem de ser a mesma conta onde estás a jogar (não uses o ID de
+            outra pessoa).
+          </li>
+          <li>
+            <strong>Espera ~15–30 segundos dentro do mapa.</strong> O servidor pergunta ao bot de poucos em poucos segundos; não é
+            instantâneo como um Game Pass nativo.
+          </li>
+          <li>
+            <strong>Se ainda não apareceu, sai do servidor e volta a entrar.</strong> Isso força o carregamento dos dados e, em
+            casos raros, destrava a UI.
+          </li>
+          <li>
+            <strong>Confirma que o pagamento ficou “pago” no Stripe</strong> (e-mail de recibo ou página “pagamento concluído” do
+            site).
+          </li>
+        </ol>
+
+        <p class="section__intro" style="margin-top: 1.5rem">
+          Se precisares de ajuda humana, usa o link de <strong>Suporte Discord</strong> no rodapé (configura o convite em
+          <code>js/config.js</code> → <code>GEAR_SITE.supportDiscordUrl</code>).
+        </p>
+
+        <p class="section__intro" style="margin-top: 1rem">
+          Ao pedir suporte, envia o máximo possível: <strong>username Roblox</strong>, o que compraste, e o
+          <strong>session_id</strong> do Stripe (começa por <code>cs_</code>) se tiveres — aparece na URL da página de sucesso
+          ou no e-mail da Stripe.
+        </p>
+
+        <p id="gear-health-line" class="section__intro" style="margin-top: 1.25rem; color: var(--muted)">
+          A verificar API do bot…
+        </p>
+
+        <p style="margin-top: 2rem">
+          <a class="btn btn--primary" href="index.html">Voltar ao início</a>
+          <a class="btn btn--ghost" href="checkout.html">Ir ao checkout</a>
+        </p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p class="footer__copy">© <span id="year"></span> Gear UP.</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/common.js"></script>
+    <script>
+      (function () {
+        var el = document.getElementById("gear-health-line");
+        var stripe = window.GEAR_STRIPE || {};
+        var base = String(stripe.apiBase || "").replace(/\/$/, "");
+        if (!base || !el) return;
+        fetch(base + "/health")
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (d) {
+            if (!d || !d.ok) throw new Error("resposta inválida");
+            el.textContent =
+              "API do bot: online · versão " +
+              (d.version || "?") +
+              " · uptime " +
+              (d.uptimeSeconds != null ? d.uptimeSeconds + " s" : "—") +
+              ".";
+          })
+          .catch(function () {
+            el.textContent =
+              "Não foi possível contactar " +
+              base +
+              " (CORS ou bot parado). No Render, confirma que o serviço está acordado e que SITE_BASE_URL inclui o domínio deste site.";
+          });
+      })();
+    </script>
+  </body>
+</html>
