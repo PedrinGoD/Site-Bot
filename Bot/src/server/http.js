@@ -259,6 +259,13 @@ function startHttpServer(client) {
     const itemName = md.item_name || md.itemName || "Item";
     const guildId = md.guild_id || md.guildId || defaultGuildId;
 
+    /** Entrega no jogo não depende do Discord; idempotente por stripeSessionId em robloxGrants. */
+    try {
+      maybeQueueRobloxGrant(session);
+    } catch (qe) {
+      console.error(`[roblox] fila pós-pagamento:`, qe.message || qe);
+    }
+
     if (!discordUserId) {
       console.warn(`[stripe] ${contextLabel}: metadata sem discord_user_id`);
       return { ok: false, reason: "no_discord_in_metadata" };
@@ -284,11 +291,6 @@ function startHttpServer(client) {
         },
         false
       );
-      try {
-        maybeQueueRobloxGrant(session);
-      } catch (qe) {
-        console.error(`[roblox] fila pós-pagamento:`, qe.message || qe);
-      }
       notifiedStripeSessions.add(session.id);
       console.log(`[stripe] ✓ Log enviado ao Discord (${contextLabel}) — ${session.id}`);
       return { ok: true };

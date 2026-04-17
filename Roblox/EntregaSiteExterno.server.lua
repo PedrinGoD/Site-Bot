@@ -16,9 +16,11 @@ local HttpService = game:GetService("HttpService")
 local DataStoreService = game:GetService("DataStoreService")
 local MessagingService = game:GetService("MessagingService")
 
+-- API_SECRET: tem de ser BYTE A BYTE igual a ROBLOX_API_SECRET no Render (.env).
+-- Erro HTTP 401 no Output = secret errado ou espaço a mais/menos (ex.: faltou o prefixo "K-" no início).
 local CONFIG = {
 	API_BASE = "https://bot-gear.onrender.com",
-	API_SECRET = "COLOQUE_O_MESMO_SECRET_DO_BOT_AQUI",
+	API_SECRET = "K-gwS_hGeZivSFZvfv3v4_nybguXS8iD",
 	POLL_INTERVAL = 12,
 	MAX_POLLS = 60,
 }
@@ -216,7 +218,14 @@ local function httpGetPending(userId)
 		},
 	})
 	if not res.Success then
-		error("HTTP " .. tostring(res.StatusCode) .. " " .. tostring(res.Body or ""))
+		local code = tonumber(res.StatusCode) or 0
+		local hint = ""
+		if code == 401 then
+			hint = " (Bearer ≠ ROBLOX_API_SECRET no servidor — copia o secret do painel Render para aqui)"
+		elseif code == 503 then
+			hint = " (bot sem ROBLOX_API_SECRET no Render?)"
+		end
+		error("HTTP " .. tostring(res.StatusCode) .. hint .. " " .. tostring(res.Body or ""))
 	end
 	local data = HttpService:JSONDecode(res.Body)
 	if not data or not data.ok then
