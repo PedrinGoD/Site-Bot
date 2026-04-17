@@ -12,6 +12,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local DataStoreService = game:GetService("DataStoreService")
 local MessagingService = game:GetService("MessagingService")
@@ -20,7 +21,7 @@ local MessagingService = game:GetService("MessagingService")
 -- Erro HTTP 401 no Output = secret errado ou espaço a mais/menos (ex.: faltou o prefixo "K-" no início).
 local CONFIG = {
 	API_BASE = "https://bot-gear.onrender.com",
-	API_SECRET = "K-gwS_hGeZivSFZvfv3v4_nybguXS8iD",
+	API_SECRET = "COLOQUE_O_MESMO_SECRET_DO_BOT_AQUI",
 	POLL_INTERVAL = 12,
 	MAX_POLLS = 60,
 }
@@ -117,6 +118,7 @@ local function updateDataStoreVip(targetUserId, vipDesejado, diasDesejados)
 	return ok, novaExpiracaoCalculada
 end
 
+--- Mesmo canal que SistemaAdminVIP; SkipCelebracao evita toast duplicado (a notificação vem de notificarCompraSiteLoja).
 local function publishVipLive(userId, nivel, novaExp, isRemovendo)
 	pcall(function()
 		MessagingService:PublishAsync(CANAL_VIP, {
@@ -124,8 +126,38 @@ local function publishVipLive(userId, nivel, novaExp, isRemovendo)
 			NovoVip = nivel,
 			NovaExp = novaExp,
 			IsRemovendo = isRemovendo == true,
+			SkipCelebracao = true,
 		})
 	end)
+end
+
+--- Mesmos RemoteEvents que SistemaAdminVIP usa (CelebracaoCompraEvent + AnuncioGlobalEvent).
+local function notificarCompraSiteLoja(player, titulo)
+	if not player or not player.Parent then
+		return
+	end
+	local t = type(titulo) == "string" and titulo or "Compra Gear Shop"
+	pcall(function()
+		local ev = ReplicatedStorage:FindFirstChild("CelebracaoCompraEvent")
+		if ev and ev:IsA("RemoteEvent") then
+			ev:FireClient(player, t, true)
+		end
+	end)
+	pcall(function()
+		local ev = ReplicatedStorage:FindFirstChild("AnuncioGlobalEvent")
+		if ev and ev:IsA("RemoteEvent") then
+			ev:FireAllClients(player.Name, t, true)
+		end
+	end)
+end
+
+local function nomeVeiculoLegivel(nomeInventario)
+	if type(nomeInventario) ~= "string" then
+		return "Veículo"
+	end
+	local s = string.gsub(nomeInventario, "_", " ")
+	s = string.gsub(s, "%s+", " ")
+	return s
 end
 
 --- Igual ao que GerenciadorDeDadosMaster grava em data.Inventario[nome]
@@ -204,6 +236,112 @@ local function deliverVehicleGrant(userId, nomeInventario)
 	local plr = Players:GetPlayerByUserId(userId)
 	if plr then
 		addVehicleToPlayerInventoryFolder(plr, nomeInventario)
+		notificarCompraSiteLoja(plr, "🛒 " .. nomeVeiculoLegivel(nomeInventario))
+	end
+	return true
+end
+
+--- Mesma curva de nível que GerenciadorDeDadosMaster (XP → Level).
+local function levelFromTotalXp(xpTotal)
+	xpTotal = math.floor(tonumber(xpTotal) or 0)
+	if xpTotal < 0 then
+		xpTotal = 0
+	end
+	local xpNecessario, multiplicador, levelCalculado, xpAcumulado = 1000, 1.3, 1, 0
+	while xpTotal >= (xpAcumulado + xpNecessario) do
+		xpAcumulado = xpAcumulado + xpNecessario
+		levelCalculado = levelCalculado + 1
+		xpNecessario = math.floor(xpNecessario * multiplicador)
+	end
+	return levelCalculado
+end
+
+local function persistEconomyGrant(userId, addMoney, addXp)
+	addMoney = math.floor(tonumber(addMoney) or 0)
+	addXp = math.floor(tonumber(addXp) or 0)
+	if addMoney < 0 or addXp < 0 then
+		return false
+	end
+	if addMoney == 0 and addXp == 0 then
+		return false
+	end
+	local ok = false
+	for attempt = 1, 4 do
+		local success = pcall(function()
+			MasterDataStore:UpdateAsync(tostring(userId), function(dadosAntigos)
+				local dados = dadosAntigos or {}
+				local d = math.floor(tonumber(dados.Dinheiro) or 0) + addMoney
+				local x = math.floor(tonumber(dados.XP) or 0) + addXp
+				if d < 0 then
+					d = 0
+				end
+				if x < 0 then
+					x = 0
+				end
+				dados.Dinheiro = d
+				dados.XP = x
+				dados.Level = levelFromTotalXp(x)
+				return dados
+			end)
+		end)
+		if success then
+			ok = true
+			break
+		end
+		task.wait(1.5)
+	end
+	return ok
+end
+
+local function applyEconomyToOnlinePlayer(player, addMoney, addXp)
+	addMoney = math.floor(tonumber(addMoney) or 0)
+	addXp = math.floor(tonumber(addXp) or 0)
+	local ls = player:FindFirstChild("leaderstats")
+	if not ls then
+		return false
+	end
+	local di = ls:FindFirstChild("Dinheiro")
+	local xp = ls:FindFirstChild("XP")
+	if not di or not di:IsA("IntValue") then
+		return false
+	end
+	if not xp or not xp:IsA("IntValue") then
+		return false
+	end
+	if addMoney ~= 0 then
+		di.Value = math.max(0, di.Value + addMoney)
+	end
+	if addXp ~= 0 then
+		xp.Value = math.max(0, xp.Value + addXp)
+	end
+	return true
+end
+
+local function tituloNotificacaoEconomia(addMoney, addXp)
+	local partes = {}
+	if addMoney > 0 then
+		table.insert(partes, "💰 +" .. tostring(addMoney) .. " moedas")
+	end
+	if addXp > 0 then
+		table.insert(partes, "⭐ +" .. tostring(addXp) .. " XP")
+	end
+	if #partes == 0 then
+		return "🛒 Compra Gear Shop"
+	end
+	return table.concat(partes, " · ")
+end
+
+local function deliverEconomyGrant(userId, addMoney, addXp)
+	addMoney = math.floor(tonumber(addMoney) or 0)
+	addXp = math.floor(tonumber(addXp) or 0)
+	if not persistEconomyGrant(userId, addMoney, addXp) then
+		warn("[EntregaSiteExterno] DataStore falhou (Dinheiro/XP) userId=", userId)
+		return false
+	end
+	local plr = Players:GetPlayerByUserId(userId)
+	if plr then
+		applyEconomyToOnlinePlayer(plr, addMoney, addXp)
+		notificarCompraSiteLoja(plr, tituloNotificacaoEconomia(addMoney, addXp))
 	end
 	return true
 end
@@ -268,6 +406,46 @@ local function grantOne(player, g)
 		return false
 	end
 
+	if grantType == "currency" then
+		local amt = math.floor(tonumber(g.grantMoneyAmount or g.grant_money_amount) or 0)
+		if amt < 1 then
+			return false
+		end
+		local uid = player.UserId
+		if deliverEconomyGrant(uid, amt, 0) then
+			print("[EntregaSiteExterno] Moedas entregues:", amt, "userId:", uid)
+			return true
+		end
+		return false
+	end
+
+	if grantType == "xp" then
+		local amt = math.floor(tonumber(g.grantXpAmount or g.grant_xp_amount) or 0)
+		if amt < 1 then
+			return false
+		end
+		local uid = player.UserId
+		if deliverEconomyGrant(uid, 0, amt) then
+			print("[EntregaSiteExterno] XP entregue:", amt, "userId:", uid)
+			return true
+		end
+		return false
+	end
+
+	if grantType == "economy" then
+		local addM = math.floor(tonumber(g.grantMoneyAmount or g.grant_money_amount) or 0)
+		local addX = math.floor(tonumber(g.grantXpAmount or g.grant_xp_amount) or 0)
+		if addM < 1 and addX < 1 then
+			return false
+		end
+		local uid = player.UserId
+		if deliverEconomyGrant(uid, addM, addX) then
+			print("[EntregaSiteExterno] Economia entregue $", addM, "+XP", addX, "userId:", uid)
+			return true
+		end
+		return false
+	end
+
 	if grantType == "vip" and tier and VIP_LEVELS[tier] then
 		local uid = player.UserId
 		local dias = tonumber(g.grantDays or g.grant_days) or 0
@@ -281,11 +459,12 @@ local function grantOne(player, g)
 		local ok, novaExp = updateDataStoreVip(uid, tier, dias)
 		if ok then
 			publishVipLive(uid, tier, novaExp, false)
+			notificarCompraSiteLoja(player, "👑 VIP " .. tier)
 			print("[EntregaSiteExterno] VIP entregue:", tier, "dias:", dias, "userId:", uid)
 			return true
 		end
 		warn("[EntregaSiteExterno] DataStore UpdateAsync falhou para", tier, uid)
-	elseif tier and tier ~= "" and not VIP_LEVELS[tier] then
+	elseif grantType == "vip" and tier and tier ~= "" and not VIP_LEVELS[tier] then
 		warn("[EntregaSiteExterno] tier desconhecido (esperado Bronze/Gold/Diamante):", tier)
 	end
 	return false

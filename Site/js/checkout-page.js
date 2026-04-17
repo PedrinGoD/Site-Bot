@@ -161,10 +161,11 @@
   }
 
   function requiresRobloxConfirmation() {
-    return cartItems.some(
-      (it) =>
-        String(it.grantTier || "").trim() !== "" || String(it.grantVehicleId || "").trim() !== ""
-    );
+    return cartItems.some((it) => {
+      const gt = String(it.grantType || "").trim().toLowerCase();
+      if (gt === "currency" || gt === "xp" || gt === "economy") return true;
+      return String(it.grantTier || "").trim() !== "" || String(it.grantVehicleId || "").trim() !== "";
+    });
   }
 
   async function submitCheckout() {
@@ -200,7 +201,7 @@
     if (requiresRobloxConfirmation() && !robloxConfirmedUserId) {
       if (errEl) {
         errEl.hidden = false;
-        errEl.textContent = "Confirme a conta Roblox que vai receber o VIP ou o veículo.";
+        errEl.textContent = "Confirme a conta Roblox que vai receber a entrega (VIP, veículo, moedas ou XP).";
       }
       return;
     }
@@ -219,6 +220,8 @@
         grantVehicleId: it.grantVehicleId || undefined,
         grantType: it.grantType || undefined,
         grantDays: parseInt(it.grantDays, 10) || 0,
+        grantMoneyAmount: parseInt(it.grantMoneyAmount, 10) || 0,
+        grantXpAmount: parseInt(it.grantXpAmount, 10) || 0,
       })),
       couponCode: couponCode || undefined,
       discountPercent: t.pct || undefined,

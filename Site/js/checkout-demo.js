@@ -41,8 +41,19 @@
     const grantVehicleId = ((a && a.getAttribute("data-grant-vehicle-id")) || "").trim();
     const grantType = ((a && a.getAttribute("data-grant-type")) || "vip").trim() || "vip";
     const grantDays = parseInt((a && a.getAttribute("data-grant-days")) || "0", 10) || 0;
+    const grantMoneyAmount = parseInt((a && a.getAttribute("data-grant-money")) || "0", 10) || 0;
+    const grantXpAmount = parseInt((a && a.getAttribute("data-grant-xp")) || "0", 10) || 0;
     return {
-      id: [itemName, String(amountCents), grantTier, grantType, String(grantDays), grantVehicleId].join("|"),
+      id: [
+        itemName,
+        String(amountCents),
+        grantTier,
+        grantType,
+        String(grantDays),
+        grantVehicleId,
+        String(grantMoneyAmount),
+        String(grantXpAmount),
+      ].join("|"),
       itemName,
       amountCents: Number.isNaN(amountCents) ? 100 : Math.max(50, amountCents),
       quantity: 1,
@@ -51,6 +62,8 @@
       grantVehicleId,
       grantType,
       grantDays,
+      grantMoneyAmount,
+      grantXpAmount,
     };
   }
 

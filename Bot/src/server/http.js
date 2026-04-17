@@ -423,6 +423,44 @@ function startHttpServer(client) {
               });
               return;
             }
+            if (gtype === "currency") {
+              const m = parseInt(String(g.grantMoneyAmount ?? g.grant_money_amount ?? "0"), 10);
+              if (robloxGrants.isValidMoneyAmount(m)) {
+                robloxGrants.queueGrantAfterPayment({
+                  stripeSessionId: `${session.id}:${idx}`,
+                  robloxUserId: String(rid),
+                  grantType: "currency",
+                  grantMoneyAmount: m,
+                });
+              }
+              return;
+            }
+            if (gtype === "xp") {
+              const xp = parseInt(String(g.grantXpAmount ?? g.grant_xp_amount ?? "0"), 10);
+              if (robloxGrants.isValidXpAmount(xp)) {
+                robloxGrants.queueGrantAfterPayment({
+                  stripeSessionId: `${session.id}:${idx}`,
+                  robloxUserId: String(rid),
+                  grantType: "xp",
+                  grantXpAmount: xp,
+                });
+              }
+              return;
+            }
+            if (gtype === "economy") {
+              const m = parseInt(String(g.grantMoneyAmount ?? g.grant_money_amount ?? "0"), 10);
+              const xp = parseInt(String(g.grantXpAmount ?? g.grant_xp_amount ?? "0"), 10);
+              if (m >= 0 && xp >= 0 && m <= 2e9 && xp <= 2e9 && (m >= 1 || xp >= 1)) {
+                robloxGrants.queueGrantAfterPayment({
+                  stripeSessionId: `${session.id}:${idx}`,
+                  robloxUserId: String(rid),
+                  grantType: "economy",
+                  grantMoneyAmount: m,
+                  grantXpAmount: xp,
+                });
+              }
+              return;
+            }
             if (!tier) return;
             robloxGrants.queueGrantAfterPayment({
               stripeSessionId: `${session.id}:${idx}`,
@@ -452,6 +490,44 @@ function startHttpServer(client) {
         grantDays: 0,
         grantVehicleId: vidSingle,
       });
+      return;
+    }
+    if (gtypeSingle === "currency") {
+      const m = parseInt(String(md.grant_money_amount || md.grantMoneyAmount || "0"), 10);
+      if (robloxGrants.isValidMoneyAmount(m)) {
+        robloxGrants.queueGrantAfterPayment({
+          stripeSessionId: session.id,
+          robloxUserId: String(rid),
+          grantType: "currency",
+          grantMoneyAmount: m,
+        });
+      }
+      return;
+    }
+    if (gtypeSingle === "xp") {
+      const xp = parseInt(String(md.grant_xp_amount || md.grantXpAmount || "0"), 10);
+      if (robloxGrants.isValidXpAmount(xp)) {
+        robloxGrants.queueGrantAfterPayment({
+          stripeSessionId: session.id,
+          robloxUserId: String(rid),
+          grantType: "xp",
+          grantXpAmount: xp,
+        });
+      }
+      return;
+    }
+    if (gtypeSingle === "economy") {
+      const m = parseInt(String(md.grant_money_amount || md.grantMoneyAmount || "0"), 10);
+      const xp = parseInt(String(md.grant_xp_amount || md.grantXpAmount || "0"), 10);
+      if (m >= 0 && xp >= 0 && m <= 2e9 && xp <= 2e9 && (m >= 1 || xp >= 1)) {
+        robloxGrants.queueGrantAfterPayment({
+          stripeSessionId: session.id,
+          robloxUserId: String(rid),
+          grantType: "economy",
+          grantMoneyAmount: m,
+          grantXpAmount: xp,
+        });
+      }
       return;
     }
 
@@ -532,6 +608,8 @@ function startHttpServer(client) {
       grantTier: g.grantTier,
       grantDays: g.grantDays,
       grantVehicleId: g.grantVehicleId || undefined,
+      grantMoneyAmount: g.grantMoneyAmount != null ? g.grantMoneyAmount : undefined,
+      grantXpAmount: g.grantXpAmount != null ? g.grantXpAmount : undefined,
     }));
     if (grants.length) {
       console.log(`[roblox] pending-grants userId=${uid} → ${grants.length} pendente(s)`);
@@ -735,6 +813,10 @@ function startHttpServer(client) {
           .trim()
           .slice(0, 64);
         const grantType = String((raw && raw.grantType) || "vip").trim().slice(0, 32) || "vip";
+        let grantMoneyAmount = parseInt(raw && raw.grantMoneyAmount, 10);
+        if (Number.isNaN(grantMoneyAmount)) grantMoneyAmount = 0;
+        let grantXpAmount = parseInt(raw && raw.grantXpAmount, 10);
+        if (Number.isNaN(grantXpAmount)) grantXpAmount = 0;
         let grantDays = parseInt(raw && raw.grantDays, 10);
         if (Number.isNaN(grantDays)) grantDays = 0;
         grantDays = Math.max(0, Math.min(3650, grantDays));
@@ -749,6 +831,8 @@ function startHttpServer(client) {
           grantTier: grantTier || undefined,
           grantVehicleId: grantVehicleId || undefined,
           grantType: grantType || undefined,
+          grantMoneyAmount,
+          grantXpAmount,
           grantDays,
         };
       });
@@ -760,6 +844,10 @@ function startHttpServer(client) {
         .trim()
         .slice(0, 64);
       const grantTypeRaw = String(req.body.grantType || "vip").trim().slice(0, 32);
+      let grantMoneyRaw = parseInt(req.body.grantMoneyAmount, 10);
+      if (Number.isNaN(grantMoneyRaw)) grantMoneyRaw = 0;
+      let grantXpRaw = parseInt(req.body.grantXpAmount, 10);
+      if (Number.isNaN(grantXpRaw)) grantXpRaw = 0;
       let grantDaysRaw = parseInt(req.body.grantDays, 10);
       if (Number.isNaN(grantDaysRaw)) grantDaysRaw = 0;
       grantDaysRaw = Math.max(0, Math.min(3650, grantDaysRaw));
@@ -772,6 +860,8 @@ function startHttpServer(client) {
           grantTier: grantTierRaw || undefined,
           grantVehicleId: grantVehicleRaw || undefined,
           grantType: grantTypeRaw || undefined,
+          grantMoneyAmount: grantMoneyRaw,
+          grantXpAmount: grantXpRaw,
           grantDays: grantDaysRaw,
         },
       ];
@@ -781,6 +871,20 @@ function startHttpServer(client) {
     function itemNeedsRobloxDelivery(it) {
       const gt = String(it.grantType || "vip").trim().toLowerCase();
       if (gt === "vehicle" && it.grantVehicleId && robloxGrants.isValidVehicleId(String(it.grantVehicleId))) {
+        return true;
+      }
+      if (gt === "currency" && robloxGrants.isValidMoneyAmount(it.grantMoneyAmount)) {
+        return true;
+      }
+      if (gt === "xp" && robloxGrants.isValidXpAmount(it.grantXpAmount)) {
+        return true;
+      }
+      if (gt === "economy") {
+        const m = Math.floor(Number(it.grantMoneyAmount) || 0);
+        const x = Math.floor(Number(it.grantXpAmount) || 0);
+        if (m < 1 && x < 1) return false;
+        if (m >= 1 && !robloxGrants.isValidMoneyAmount(m)) return false;
+        if (x >= 1 && !robloxGrants.isValidXpAmount(x)) return false;
         return true;
       }
       return Boolean(it.grantTier && robloxGrants.VALID_TIERS[String(it.grantTier)]);
@@ -794,6 +898,29 @@ function startHttpServer(client) {
             ok: false,
             error: "grantVehicleId inválido (use NomeInventario do catálogo: letras, números, _ e -)",
           });
+        }
+      } else if (gt === "currency") {
+        if (!robloxGrants.isValidMoneyAmount(gi.grantMoneyAmount)) {
+          return res.status(400).json({ ok: false, error: "grantMoneyAmount inválido (1 a 2e9)" });
+        }
+      } else if (gt === "xp") {
+        if (!robloxGrants.isValidXpAmount(gi.grantXpAmount)) {
+          return res.status(400).json({ ok: false, error: "grantXpAmount inválido (1 a 2e9)" });
+        }
+      } else if (gt === "economy") {
+        const m = Math.floor(Number(gi.grantMoneyAmount) || 0);
+        const x = Math.floor(Number(gi.grantXpAmount) || 0);
+        if (m < 0 || x < 0 || m > 2e9 || x > 2e9) {
+          return res.status(400).json({ ok: false, error: "economy: valores fora do intervalo" });
+        }
+        if (m < 1 && x < 1) {
+          return res.status(400).json({ ok: false, error: "economy: indique dinheiro ou XP (≥1)" });
+        }
+        if (m >= 1 && !robloxGrants.isValidMoneyAmount(m)) {
+          return res.status(400).json({ ok: false, error: "grantMoneyAmount inválido" });
+        }
+        if (x >= 1 && !robloxGrants.isValidXpAmount(x)) {
+          return res.status(400).json({ ok: false, error: "grantXpAmount inválido" });
         }
       } else if (!robloxGrants.VALID_TIERS[String(gi.grantTier)]) {
         return res.status(400).json({ ok: false, error: "grantTier deve ser Bronze, Gold ou Diamante" });
@@ -833,6 +960,19 @@ function startHttpServer(client) {
             meta.grant_type = "vehicle";
             meta.grant_vehicle_id = String(g0.grantVehicleId).slice(0, 64);
             meta.grant_days = "0";
+          } else if (g0t === "currency" && robloxGrants.isValidMoneyAmount(g0.grantMoneyAmount)) {
+            meta.grant_type = "currency";
+            meta.grant_money_amount = String(Math.floor(Number(g0.grantMoneyAmount) || 0));
+            meta.grant_days = "0";
+          } else if (g0t === "xp" && robloxGrants.isValidXpAmount(g0.grantXpAmount)) {
+            meta.grant_type = "xp";
+            meta.grant_xp_amount = String(Math.floor(Number(g0.grantXpAmount) || 0));
+            meta.grant_days = "0";
+          } else if (g0t === "economy") {
+            meta.grant_type = "economy";
+            meta.grant_money_amount = String(Math.floor(Number(g0.grantMoneyAmount) || 0));
+            meta.grant_xp_amount = String(Math.floor(Number(g0.grantXpAmount) || 0));
+            meta.grant_days = "0";
           } else {
             meta.grant_type = g0.grantType || "vip";
             meta.grant_tier = g0.grantTier;
@@ -843,6 +983,20 @@ function startHttpServer(client) {
             const gt = String(g.grantType || "vip").trim().toLowerCase();
             if (gt === "vehicle" && g.grantVehicleId) {
               return { grantType: "vehicle", grantVehicleId: String(g.grantVehicleId).slice(0, 64), grantDays: 0 };
+            }
+            if (gt === "currency" && robloxGrants.isValidMoneyAmount(g.grantMoneyAmount)) {
+              return { grantType: "currency", grantMoneyAmount: Math.floor(Number(g.grantMoneyAmount) || 0), grantDays: 0 };
+            }
+            if (gt === "xp" && robloxGrants.isValidXpAmount(g.grantXpAmount)) {
+              return { grantType: "xp", grantXpAmount: Math.floor(Number(g.grantXpAmount) || 0), grantDays: 0 };
+            }
+            if (gt === "economy") {
+              return {
+                grantType: "economy",
+                grantMoneyAmount: Math.floor(Number(g.grantMoneyAmount) || 0),
+                grantXpAmount: Math.floor(Number(g.grantXpAmount) || 0),
+                grantDays: 0,
+              };
             }
             return {
               grantType: g.grantType || "vip",
