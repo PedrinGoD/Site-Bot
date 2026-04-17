@@ -60,17 +60,73 @@
     saveCart(items);
   }
 
+  function checkoutPath() {
+    try {
+      return new URL("checkout.html", window.location.href).href;
+    } catch (_) {
+      return "checkout.html";
+    }
+  }
+
+  function showGearToast(message) {
+    let el = document.getElementById("gear-cart-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "gear-cart-toast";
+      el.className = "gear-cart-toast";
+      el.setAttribute("role", "status");
+      el.setAttribute("aria-live", "polite");
+      document.body.appendChild(el);
+    }
+    el.textContent = message;
+    el.classList.add("gear-cart-toast--visible");
+    clearTimeout(el._t);
+    el._t = setTimeout(function () {
+      el.classList.remove("gear-cart-toast--visible");
+    }, 4200);
+  }
+
+  function flashGearCartPreview() {
+    const wrap = document.getElementById("gear-cart-top");
+    if (!wrap) return;
+    wrap.classList.add("nav-cart--flash");
+    clearTimeout(wrap._flashT);
+    wrap._flashT = setTimeout(function () {
+      wrap.classList.remove("nav-cart--flash");
+    }, 4500);
+  }
+
+  function notifyCartAdded(item) {
+    const name = String(item.itemName || "Item");
+    const short = name.length > 48 ? name.slice(0, 45) + "…" : name;
+    showGearToast("Item adicionado ao carrinho: " + short);
+    flashGearCartPreview();
+  }
+
   document.addEventListener(
     "click",
     function (e) {
+      const buy = e.target.closest("a.js-cart-buy-now");
+      if (buy) {
+        e.preventDefault();
+        e.stopPropagation();
+        const item = readItemFromAnchor(buy);
+        saveCart([item]);
+        window.location.href = checkoutPath();
+        return;
+      }
+
       const a = e.target.closest("a.js-cart-add");
       if (!a) return;
       e.preventDefault();
       e.stopPropagation();
-      addToCart(readItemFromAnchor(a));
+      if (!a.dataset.defaultLabel) a.dataset.defaultLabel = a.textContent.trim();
+      const item = readItemFromAnchor(a);
+      addToCart(item);
+      notifyCartAdded(item);
       a.textContent = "Adicionado ✓";
       setTimeout(function () {
-        a.textContent = "Adicionar ao carrinho";
+        a.textContent = a.dataset.defaultLabel || "Adicionar ao carrinho";
       }, 900);
     },
     true

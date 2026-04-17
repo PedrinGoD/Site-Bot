@@ -493,6 +493,32 @@ body.checkout-page::before {
   width: 100%;
 }
 
+.product-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+  width: 100%;
+}
+
+@media (min-width: 480px) {
+  .product-card__actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .product-card__actions .btn {
+    flex: 1 1 calc(50% - 0.25rem);
+    width: auto;
+    min-width: 0;
+  }
+}
+
+.product-card__actions--vip {
+  margin-top: 0.65rem;
+}
+
 /* Imagem opcional (Carros, Pacotes, etc.) — definir image em data-*.js */
 .product-card--has-media .product-card__media {
   margin: -0.15rem -0.15rem 0.75rem;
@@ -1455,6 +1481,35 @@ dialog.gear-demo-checkout[open] {
 .nav-cart:hover .nav-cart__preview,
 .nav-cart:focus-within .nav-cart__preview {
   display: block;
+}
+
+.nav-cart.nav-cart--flash .nav-cart__preview {
+  display: block !important;
+}
+
+.gear-cart-toast {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(120%);
+  z-index: 95;
+  max-width: min(420px, calc(100vw - 2rem));
+  padding: 0.75rem 1.1rem;
+  border-radius: 12px;
+  background: rgba(14, 15, 22, 0.96);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.92rem;
+  line-height: 1.35;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+  opacity: 0;
+  transition: transform 0.35s ease, opacity 0.35s ease;
+}
+
+.gear-cart-toast.gear-cart-toast--visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
 }
 
 .nav-cart__line {
