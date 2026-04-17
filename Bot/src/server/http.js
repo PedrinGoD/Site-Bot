@@ -358,7 +358,10 @@ function startHttpServer(client) {
   function maybeQueueRobloxGrant(session) {
     const md = session.metadata || {};
     const rid = md.roblox_user_id || md.robloxUserId;
-    if (!rid) return;
+    if (!rid) {
+      console.log("[roblox] metadata sem roblox_user_id — entrega no jogo ignorada");
+      return;
+    }
 
     const grantsJson = String(md.roblox_grants_json || "").trim();
     if (grantsJson) {
@@ -386,7 +389,10 @@ function startHttpServer(client) {
     }
 
     const tier = md.grant_tier || md.grantTier;
-    if (!tier) return;
+    if (!tier) {
+      console.log("[roblox] sessão paga com roblox_user_id mas sem grant_tier (produto sem VIP?) — nada enfileirado");
+      return;
+    }
     const days = parseInt(String(md.grant_days || md.grantDays || "0"), 10);
     const gtype = String(md.grant_type || md.grantType || "vip").trim() || "vip";
     robloxGrants.queueGrantAfterPayment({
@@ -477,6 +483,40 @@ function startHttpServer(client) {
     const ids = req.body && Array.isArray(req.body.grantIds) ? req.body.grantIds : [];
     const n = robloxGrants.acknowledgeByIds(ids);
     return res.json({ ok: true, acknowledged: n });
+  });
+
+  /**
+   * POST /roblox/requeue-from-stripe-session — recuperação manual da fila VIP (ex.: Render apagou data/roblox-pending-grants.json).
+   * Header: Authorization: Bearer ROBLOX_API_SECRET
+   * Body: { sessionId: "cs_..." }
+   */
+  app.post("/roblox/requeue-from-stripe-session", async (req, res) => {
+    if (!robloxApiSecret) {
+      return res.status(503).json({ ok: false, error: "ROBLOX_API_SECRET não configurado no bot" });
+    }
+    const bearer = extractBearer(req);
+    if (bearer !== robloxApiSecret) {
+      return res.status(401).json({ ok: false, error: "unauthorized" });
+    }
+    if (!stripe) {
+      return res.status(503).json({ ok: false, error: "STRIPE_SECRET_KEY não configurada" });
+    }
+    const sessionId = req.body && req.body.sessionId;
+    if (!sessionId || typeof sessionId !== "string" || !sessionId.startsWith("cs_")) {
+      return res.status(400).json({ ok: false, error: "sessionId inválido" });
+    }
+    try {
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      if (session.payment_status !== "paid") {
+        return res.json({ ok: false, reason: "not_paid", payment_status: session.payment_status });
+      }
+      maybeQueueRobloxGrant(session);
+      console.log(`[roblox] requeue-from-stripe-session: ${sessionId.slice(0, 14)}…`);
+      return res.json({ ok: true });
+    } catch (e) {
+      console.error("[roblox] requeue-from-stripe-session:", e);
+      return res.status(500).json({ ok: false, error: String(e.message || e) });
+    }
   });
 
   /**
@@ -828,7 +868,9 @@ function startHttpServer(client) {
       );
     }
     if (robloxApiSecret) {
-      console.log(`  + roblox: GET /roblox/lookup-username  |  GET/POST /roblox/pending-grants + /roblox/ack-grants (Bearer ROBLOX_API_SECRET)`);
+      console.log(
+        `  + roblox: GET /roblox/lookup-username  |  GET/POST /roblox/pending-grants + /roblox/ack-grants  |  POST /roblox/requeue-from-stripe-session (Bearer ROBLOX_API_SECRET)`
+      );
     }
   });
 

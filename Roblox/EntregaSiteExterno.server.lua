@@ -16,10 +16,11 @@ local DataStoreService = game:GetService("DataStoreService")
 local MessagingService = game:GetService("MessagingService")
 
 local CONFIG = {
-	-- URL do teu bot (mesmo host/porta que GEAR_STRIPE.apiBase no site)
-	API_BASE = "http://127.0.0.1:3847",
-	-- Deve ser IGUAL a ROBLOX_API_SECRET no ficheiro .env do bot
-	API_SECRET = "K-gwS_hGeZivSFZvfv3v4_nybguXS8iD",
+	-- URL pública HTTPS do bot (OBRIGATÓRIO em produção — localhost NÃO funciona no jogo publicado)
+	-- Mesmo valor que Site/js/config.js → GEAR_STRIPE.apiBase (ex.: https://bot-gear.onrender.com)
+	API_BASE = "https://bot-gear.onrender.com",
+	-- Deve ser IGUAL a ROBLOX_API_SECRET no Render / .env do bot (não commites o secret real)
+	API_SECRET = "COLOQUE_O_MESMO_SECRET_DO_BOT_AQUI",
 	-- Segundos entre tentativas enquanto o jogador está no servidor
 	POLL_INTERVAL = 12,
 	-- Máximo de tentativas por sessão (evita loop infinito se API falhar)
