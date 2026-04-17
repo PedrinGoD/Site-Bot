@@ -32,9 +32,45 @@ function startHttpServer(client) {
   const sessionSigningSecret = (process.env.SESSION_SIGNING_SECRET || secret || "gear-session-dev").trim();
   const allowManualDiscordId = process.env.ALLOW_MANUAL_DISCORD_ID === "true";
   const robloxApiSecret = (process.env.ROBLOX_API_SECRET || "").trim();
-  /** Fallback persistente (Render/heroku: ficheiro em data/ não sobrevive a deploys). */
-  const envSalesLogChannelId = (process.env.SALES_LOG_CHANNEL_ID || "").trim();
-  const envNitroLogChannelId = (process.env.NITRO_LOG_CHANNEL_ID || "").trim();
+
+  /** Normaliza ID de canal Discord (aspas, espaços, menção tipo <#123456789012345678>). */
+  function normalizeDiscordChannelId(raw) {
+    if (raw == null) return "";
+    let s = String(raw).trim();
+    if (!s) return "";
+    s = s.replace(/^[\s"'`]+|[\s"'`]+$/g, "");
+    const mention = s.match(/^<#(\d{17,22})>$/);
+    if (mention) return mention[1];
+    const digits = s.replace(/\D/g, "");
+    if (digits.length >= 17 && digits.length <= 22) return digits;
+    return "";
+  }
+
+  /**
+   * Lido em cada uso — Render injeta variáveis no processo (não confundir .env local com o painel do host).
+   * Aliases: GEAR_SALES_LOG_CHANNEL_ID, DISCORD_SALES_CHANNEL_ID.
+   */
+  function getSalesLogChannelIdFromEnv() {
+    const keys = [
+      "SALES_LOG_CHANNEL_ID",
+      "GEAR_SALES_LOG_CHANNEL_ID",
+      "DISCORD_SALES_CHANNEL_ID",
+    ];
+    for (const k of keys) {
+      const id = normalizeDiscordChannelId(process.env[k]);
+      if (id) return id;
+    }
+    return "";
+  }
+
+  function getNitroLogChannelIdFromEnv() {
+    const keys = ["NITRO_LOG_CHANNEL_ID", "GEAR_NITRO_LOG_CHANNEL_ID"];
+    for (const k of keys) {
+      const id = normalizeDiscordChannelId(process.env[k]);
+      if (id) return id;
+    }
+    return "";
+  }
 
   /** Evita dois avisos no Discord (webhook + página de sucesso) para o mesmo checkout */
   const notifiedStripeSessions = new Set();
@@ -117,18 +153,17 @@ function startHttpServer(client) {
     }
 
     const cfg = guildConfig.get(guildId);
+    const envSales = getSalesLogChannelIdFromEnv();
+    const envNitro = getNitroLogChannelIdFromEnv();
     const channelId =
       kind === "nitro"
-        ? cfg.nitroLogChannelId ||
-          envNitroLogChannelId ||
-          cfg.salesLogChannelId ||
-          envSalesLogChannelId
-        : cfg.salesLogChannelId || envSalesLogChannelId;
+        ? cfg.nitroLogChannelId || envNitro || cfg.salesLogChannelId || envSales
+        : cfg.salesLogChannelId || envSales;
 
     if (!channelId) {
       throw Object.assign(
         new Error(
-          "Canal de log não configurado. Use /setup vendas (ou defina SALES_LOG_CHANNEL_ID no .env / painel do host — recomendado em produção)."
+          "Canal de log não configurado. No Render: Environment → SALES_LOG_CHANNEL_ID = ID do canal (sem espaços). Ficheiro .env local não é enviado ao Git."
         ),
         { status: 400 }
       );
@@ -850,10 +885,19 @@ function startHttpServer(client) {
       stripeWebhook: Boolean(stripeWebhookSecret),
       discordOAuth: Boolean(discordClientSecret && discordClientId),
       robloxGrantsApi: Boolean(robloxApiSecret),
+      salesLogChannelFromEnv: Boolean(getSalesLogChannelIdFromEnv()),
     });
   });
 
   const server = app.listen(port, () => {
+    const salesCh = getSalesLogChannelIdFromEnv();
+    if (salesCh) {
+      console.log(`[discord] SALES_LOG_CHANNEL_ID ativo (termina …${salesCh.slice(-4)})`);
+    } else {
+      console.warn(
+        "[discord] SALES_LOG_CHANNEL_ID vazio — vendas Stripe não têm canal. No Render: Environment (o .env local não sobe no deploy)."
+      );
+    }
     console.log(`HTTP webhook em http://0.0.0.0:${port}  (POST /webhooks/venda)`);
     if (demoSaleKey) {
       console.log(`  + demo: POST /webhooks/demo-venda  (header X-Demo-Key)`);
