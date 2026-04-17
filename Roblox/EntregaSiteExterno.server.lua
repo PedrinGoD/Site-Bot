@@ -22,8 +22,8 @@ local MessagingService = game:GetService("MessagingService")
 local CONFIG = {
 	API_BASE = "https://bot-gear.onrender.com",
 	API_SECRET = "COLOQUE_O_MESMO_SECRET_DO_BOT_AQUI",
+	--- Segundos entre cada GET /roblox/pending-grants (enquanto o jogador estiver no servidor).
 	POLL_INTERVAL = 12,
-	MAX_POLLS = 60,
 }
 
 local CANAL_VIP = "AtualizacaoVipAoVivo"
@@ -478,11 +478,8 @@ local function runDeliveryLoop(player)
 
 	task.wait(2)
 
-	for poll = 1, CONFIG.MAX_POLLS do
-		if not player.Parent then
-			return
-		end
-
+	--- Antes: loop limitado (ex.: 60×12s ≈ 12 min) — depois parava e só voltava a entregar ao relogar.
+	while player.Parent do
 		local okFetch, grantsOrErr = pcall(function()
 			return httpGetPending(player.UserId)
 		end)
@@ -510,8 +507,15 @@ local function runDeliveryLoop(player)
 	end
 end
 
-Players.PlayerAdded:Connect(function(player)
+local function startDeliveryFor(player)
 	task.spawn(function()
 		runDeliveryLoop(player)
 	end)
-end)
+end
+
+Players.PlayerAdded:Connect(startDeliveryFor)
+
+--- Jogadores que já estavam no servidor quando o script iniciou (PlayerAdded não volta a disparar).
+for _, p in ipairs(Players:GetPlayers()) do
+	startDeliveryFor(p)
+end

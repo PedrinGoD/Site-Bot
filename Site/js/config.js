@@ -5,7 +5,7 @@ window.ROBLOX_PLACE_URL = "https://www.roblox.com/pt/games/140001935550545/Gear-
 window.GEAR_SITE = {
   version: "1.3.0",
   /** Ex.: "https://discord.gg/SEU_CONVITE" — deixa vazio para esconder o link no rodapé. */
-  supportDiscordUrl: "",
+  supportDiscordUrl: "https://discord.gg/WneV4yv8dX",
 };
 
 /**
