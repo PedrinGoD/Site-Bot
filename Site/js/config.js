@@ -9,7 +9,7 @@ window.GEAR_STRIPE = {
   /** Ative para abrir checkout ao clicar em Comprar (bot precisa estar rodando). */
   enabled: true,
   /** Use o mesmo host que SITE_BASE_URL no .env do bot (127.0.0.1 e localhost são origens diferentes). */
-  apiBase: "http://127.0.0.1:3847",
+  apiBase: "https://bot-gear.onrender.com",
   /** Mesmo que GUILD_ID do .env do bot (opcional se já estiver no servidor) */
   guildId: "1494479868174270576",
   /**
@@ -34,7 +34,7 @@ window.GEAR_STRIPE = {
  */
 window.GEAR_CHECKOUT_DEMO = {
   enabled: false,
-  apiBase: "http://127.0.0.1:3847",
+  apiBase: "https://bot-gear.onrender.com",
   guildId: "",
   demoKey: "",
 };

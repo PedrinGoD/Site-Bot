@@ -67,7 +67,11 @@ function startHttpServer(client) {
     "http://127.0.0.1:4173",
     "http://localhost:4173",
   ];
-  const corsOrigins = demoOrigins.length ? demoOrigins : defaultDemoOrigins;
+  const corsOrigins = [...(demoOrigins.length ? demoOrigins : defaultDemoOrigins)];
+  /** Site em produção (Render, domínio próprio): mesma origem que SITE_BASE_URL */
+  if (siteBaseUrl && !corsOrigins.includes(siteBaseUrl)) {
+    corsOrigins.push(siteBaseUrl);
+  }
 
   function corsAllowOrigin(origin) {
     if (!origin || origin === "null") return true;
