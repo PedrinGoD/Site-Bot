@@ -119,16 +119,42 @@
         </div>
       </section>
 
-      <section class="section section--cta" id="jogar">
-        <div class="cta-card">
-          <h2 class="cta-card__title">Pronto para entrar na pista?</h2>
-          <p class="cta-card__text">
-            O jogo roda no Roblox. Um clique e você já está dentro do universo Gear UP.
-          </p>
-          <a class="btn btn--primary btn--lg js-roblox-link" href="#">Abrir experiência no Roblox</a>
-          <p class="cta-card__hint">
-            Configure o link em <code>js/config.js</code> (Creator Dashboard → Share).
-          </p>
+      <section class="section section--featured" aria-labelledby="mais-vendidos">
+        <h2 id="mais-vendidos" class="section__title">Mais vendidos</h2>
+        <p class="section__intro">Três destaques rápidos para o jogador comprar direto da home.</p>
+        <div class="products featured-products">
+          <article class="product-card product-card--has-media">
+            <span class="product-card__badge product-card__badge--gold">VIP</span>
+            <div class="product-card__media">
+              <img class="product-card__thumb" src="assets/vip-gold.png" alt="VIP Gold" width="400" height="250" loading="lazy" decoding="async" />
+            </div>
+            <h3>VIP Gold — 30 dias</h3>
+            <p class="product-card__desc">Plano mais popular para vantagem contínua em corridas e progressão.</p>
+            <div class="product-card__price">R$ 39,90</div>
+            <a class="btn btn--primary js-cart-add" href="#" data-checkout-item="VIP Gold — 30 dias" data-checkout-price="R$ 39,90" data-checkout-cents="3990" data-checkout-image="assets/vip-gold.png" data-grant-type="vip" data-grant-tier="Gold" data-grant-days="30">Adicionar ao carrinho</a>
+          </article>
+
+          <article class="product-card product-card--has-media">
+            <span class="product-card__badge product-card__badge--car">Carro</span>
+            <div class="product-card__media">
+              <img class="product-card__thumb" src="assets/gear-up-logo.png" alt="Starter Pack Piloto" width="400" height="250" loading="lazy" decoding="async" />
+            </div>
+            <h3>Starter Pack Piloto</h3>
+            <p class="product-card__desc">Bundle de entrada ideal para quem acabou de começar no Gear UP.</p>
+            <div class="product-card__price">R$ 39,90</div>
+            <a class="btn btn--primary js-cart-add" href="#" data-checkout-item="Starter Pack Piloto" data-checkout-price="R$ 39,90" data-checkout-cents="3990" data-checkout-image="assets/gear-up-logo.png">Adicionar ao carrinho</a>
+          </article>
+
+          <article class="product-card product-card--has-media">
+            <span class="product-card__badge product-card__badge--combo">Combo</span>
+            <div class="product-card__media">
+              <img class="product-card__thumb" src="assets/gear-up-logo.png" alt="Combo Turbo Weekend" width="400" height="250" loading="lazy" decoding="async" />
+            </div>
+            <h3>Combo Turbo Weekend</h3>
+            <p class="product-card__desc">Pacote com boost para fim de semana e evolução rápida na conta.</p>
+            <div class="product-card__price">R$ 24,90</div>
+            <a class="btn btn--primary js-cart-add" href="#" data-checkout-item="Combo Turbo Weekend" data-checkout-price="R$ 24,90" data-checkout-cents="2490" data-checkout-image="assets/gear-up-logo.png">Adicionar ao carrinho</a>
+          </article>
         </div>
       </section>
     </main>
@@ -150,5 +176,6 @@
     <script src="js/config.js"></script>
     <script src="js/discord-auth.js"></script>
     <script src="js/common.js"></script>
+    <script src="js/checkout-demo.js"></script>
   </body>
 </html>
