@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Login — Gear UP</title>
+    <meta name="robots" content="noindex" />
+    <script>
+      (function () {
+        var STORAGE = "gear_discord_session_token";
+        var p = new URLSearchParams(location.search);
+        var next = p.get("next") || "index.html";
+        if (next.indexOf("..") >= 0 || next.indexOf("//") >= 0) next = "index.html";
+        var h = location.hash || "";
+        if (h.indexOf("token=") >= 0) {
+          var m = h.match(/^#token=(.+)$/);
+          if (m) {
+            try {
+              sessionStorage.setItem(STORAGE, decodeURIComponent(m[1]));
+            } catch (e) {}
+          }
+        }
+        history.replaceState(null, "", "auth-callback.html");
+        location.replace(next);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Redirecionando…</p>
+  </body>
+</html>

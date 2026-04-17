@@ -1,0 +1,22 @@
+{
+  "name": "gear-hub-bot",
+  "version": "2.0.0",
+  "description": "Bot Discord: tickets, logs de vendas (site), Nitro e integrações HTTP",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "deploy": "node src/deploy-commands.js",
+    "test:webhook": "node scripts/test-webhook-venda.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "stripe": "^17.4.0"
+  }
+}

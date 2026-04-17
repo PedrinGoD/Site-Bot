@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Gear UP — Loja de carros e cosméticos." />
+    <title>Gear UP — Carros</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="fire-glow" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="index.html">
+          <img src="assets/gear-up-logo.png" alt="Gear UP" width="48" height="48" class="brand__logo" />
+          <span class="brand__text">Gear UP</span>
+        </a>
+        <nav class="nav" aria-label="Principal">
+          <a href="index.html" class="nav__link">Início</a>
+          <a href="vip.html" class="nav__link">VIP</a>
+          <a href="carros.html" class="nav__link nav__link--active">Carros</a>
+          <a href="pacotes.html" class="nav__link">Pacotes</a>
+          <a href="#" class="nav__cta js-roblox-link">Jogar</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page-main">
+      <header class="page-head">
+        <p class="page-head__eyebrow">Garagem</p>
+        <h1 class="page-head__title">Carros &amp; visuais</h1>
+        <p class="page-head__lead">
+          Veículos e pacotes de aparência. Conecte cada card ao seu Developer Product ou
+          experiência no Roblox.
+        </p>
+      </header>
+
+      <section class="section section--shop-page">
+        <div class="products" id="products"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="footer__brand">
+        <span class="footer__ch" aria-hidden="true">CH</span>
+        <div>
+          <div class="footer__corp">CH Corporations</div>
+          <div class="footer__game">Gear UP</div>
+        </div>
+      </div>
+      <p class="footer__note">
+        Edite os produtos em <code>js/data-carros.js</code>. Imagens em <code>assets/carros/</code>
+        (campos <code>image</code> e <code>imageAlt</code>).
+      </p>
+      <p class="footer__copy">© <span id="year"></span> Gear UP.</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/discord-auth.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/data-carros.js"></script>
+    <script src="js/shop.js"></script>
+    <script src="js/checkout-demo.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        if (window.GearShop && window.GEAR_SHOP_ITEMS) {
+          GearShop.render("products", GEAR_SHOP_ITEMS);
+        }
+      });
+    </script>
+  </body>
+</html>

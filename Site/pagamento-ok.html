@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pagamento concluído — Gear UP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="fire-glow" aria-hidden="true"></div>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="index.html">
+          <img src="assets/gear-up-logo.png" alt="Gear UP" width="48" height="48" class="brand__logo" />
+          <span class="brand__text">Gear UP</span>
+        </a>
+        <nav class="nav" aria-label="Principal">
+          <a href="index.html" class="nav__link">Início</a>
+        </nav>
+      </div>
+    </header>
+    <main class="page-main">
+      <header class="page-head">
+        <p class="page-head__eyebrow">Stripe</p>
+        <h1 class="page-head__title">Pagamento concluído</h1>
+        <p class="page-head__lead">Obrigado pela compra.</p>
+        <p class="page-head__lead" id="gear-pay-status" style="color: var(--muted); font-size: 0.95rem">
+          A confirmar registo no Discord…
+        </p>
+        <p class="page-head__lead">
+          <a class="btn btn--primary" href="index.html">Voltar ao site</a>
+        </p>
+      </header>
+    </main>
+    <footer class="site-footer">
+      <p class="footer__copy">© <span id="year"></span> Gear UP.</p>
+    </footer>
+    <script src="js/config.js"></script>
+    <script src="js/common.js"></script>
+    <script>
+      (function () {
+        var el = document.getElementById("gear-pay-status");
+        var params = new URLSearchParams(location.search);
+        var sid = params.get("session_id");
+        if (!sid) {
+          try {
+            sid = sessionStorage.getItem("gear_stripe_checkout_session");
+            if (sid) sessionStorage.removeItem("gear_stripe_checkout_session");
+          } catch (_) {
+            sid = null;
+          }
+        }
+        if (!sid) {
+          if (el)
+            el.textContent =
+              "Sem session_id (URL ou sessão). Use o mesmo host que em SITE_BASE_URL do bot (127.0.0.1 vs localhost) e volte do Stripe.";
+          return;
+        }
+        var apiBase = (window.GEAR_STRIPE && window.GEAR_STRIPE.apiBase) || "http://127.0.0.1:3847";
+        apiBase = String(apiBase).replace(/\/$/, "");
+        fetch(apiBase + "/stripe/notify-from-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: sid }),
+        })
+          .then(function (r) {
+            return r.json().then(function (d) {
+              return { ok: r.ok, data: d };
+            });
+          })
+          .then(function (_ref) {
+            var data = _ref.data;
+            if (!el) return;
+            if (data.duplicate) {
+              el.textContent = "Registo no Discord já tinha sido enviado (sem duplicar).";
+              return;
+            }
+            if (data.ok && data.reason === "not_paid") {
+              el.textContent =
+                "Pagamento ainda em processamento (" + (data.payment_status || "?") + "). Tenta recarregar em alguns segundos.";
+              return;
+            }
+            if (data.ok) {
+              el.textContent = "Aviso enviado ao canal de vendas no Discord.";
+              return;
+            }
+            el.textContent = "Não foi possível notificar o Discord: " + (data.error || JSON.stringify(data));
+          })
+          .catch(function (e) {
+            if (el)
+              el.textContent =
+                "Não foi possível falar com o bot em " +
+                apiBase +
+                ". Está com npm start? Erro: " +
+                (e.message || e);
+          });
+      })();
+    </script>
+  </body>
+</html>

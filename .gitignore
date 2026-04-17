@@ -1,0 +1,16 @@
+# Segredos — NUNCA commitar
+Bot/.env
+.env
+.env.local
+*.pem
+
+# Dependências
+Bot/node_modules/
+
+# Dados locais / fila (opcional: não versionar estado de produção)
+Bot/data/roblox-pending-grants.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
