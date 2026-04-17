@@ -285,59 +285,124 @@ function startHttpServer(client) {
     }
   }
 
-  /**
-   * @param {import('stripe').Stripe.Checkout.Session} s
-   */
-  function formatStripePaymentBlock(s) {
-    const lines = [];
-    const pmTypes = s.payment_method_types;
-    if (Array.isArray(pmTypes) && pmTypes.length) {
-      lines.push(`Métodos aceites nesta sessão: **${pmTypes.join(", ")}**`);
-    }
+  /** Resumo curto do meio de pagamento (sem IDs longos do Stripe). */
+  function formatStripePaymentShort(s) {
     const pi = typeof s.payment_intent === "object" && s.payment_intent ? s.payment_intent : null;
-    if (!pi) {
-      lines.push("PaymentIntent: *não disponível na sessão expandida*");
-      return lines.join("\n").slice(0, 1020);
-    }
-    lines.push(`PaymentIntent: \`${pi.id}\``);
-    lines.push(`Status PI: **${pi.status}**`);
-    lines.push(`Moeda PI: ${(pi.currency || "").toUpperCase() || "—"}`);
+    if (!pi) return "—";
     const pm = typeof pi.payment_method === "object" && pi.payment_method ? pi.payment_method : null;
-    if (!pm) {
-      const pmid = typeof pi.payment_method === "string" ? pi.payment_method : "";
-      if (pmid) lines.push(`Payment method ID: \`${pmid}\``);
-      return lines.join("\n").slice(0, 1020);
-    }
-    lines.push(`Tipo PM: **${pm.type}**`);
+    if (!pm) return "Cartão / método (detalhe indisponível)";
+    const bits = [];
     if (pm.card) {
       const c = pm.card;
-      lines.push(
-        `Cartão: **${(c.brand || "?").toUpperCase()}** ········${c.last4 || "????"} (${c.funding || "funding ?"})`
+      bits.push(
+        `${(c.brand || "?").toUpperCase()} ····${c.last4 || "????"} · ${c.funding || "?"} · país ${c.country || "?"}`
       );
-      lines.push(`País (cartão): **${c.country || "—"}**`);
-      if (c.exp_month && c.exp_year) lines.push(`Validade: ${c.exp_month}/${c.exp_year}`);
-      if (c.wallet?.type) lines.push(`Carteira digital: **${c.wallet.type}**`);
-      if (c.iin) lines.push(`IIN (6 primeiros): \`${c.iin}\``);
+      if (c.wallet?.type) bits.push(`Carteira: ${c.wallet.type}`);
+    } else if (pm.type === "pix" || pm.pix) {
+      bits.push("Pix");
+    } else if (pm.type === "boleto" || pm.boleto) {
+      bits.push("Boleto");
+    } else {
+      bits.push(String(pm.type || "?"));
     }
-    if (pm.billing_details) {
-      const b = pm.billing_details;
-      const bits = [b.name, b.email, b.phone].filter(Boolean);
-      if (bits.length) lines.push(`Billing (PM): ${bits.join(" · ")}`.slice(0, 300));
-      if (b.address?.country) lines.push(`País (billing PM): **${b.address.country}**`);
-    }
-    if (pm.pix) lines.push(`Pix (Stripe): \`${JSON.stringify(pm.pix).slice(0, 180)}\``);
-    if (pm.boleto) lines.push(`Boleto: \`${JSON.stringify(pm.boleto).slice(0, 180)}\``);
     if (pm.us_bank_account) {
       const u = pm.us_bank_account;
-      lines.push(
-        `Conta US: **${u.bank_name || "banco ?"}** · ${u.account_holder_type || ""} · ····${u.last4 || ""}`
-      );
+      bits.push(`${u.bank_name || "Banco US"} ····${u.last4 || ""}`);
     }
-    if (pm.sepa_debit) {
-      const se = pm.sepa_debit;
-      lines.push(`SEPA: país **${se.country || "—"}** · banco \`${String(se.bank_code || "").slice(0, 40)}\``);
+    if (pm.sepa_debit) bits.push(`SEPA · ${pm.sepa_debit.country || "?"}`);
+    return bits.join("\n").slice(0, 500);
+  }
+
+  function prettyGrantTypePt(v) {
+    const m = {
+      vip: "VIP",
+      vehicle: "Veículo",
+      currency: "Dinheiro",
+      xp: "XP",
+      economy: "Economia (dinheiro + XP)",
+    };
+    return m[String(v || "").trim().toLowerCase()] || String(v || "—");
+  }
+
+  /** Carrinho `roblox_grants_json` em linhas curtas. */
+  function prettyRobloxGrantsJson(raw) {
+    try {
+      const a = JSON.parse(String(raw));
+      if (!Array.isArray(a)) return String(raw).slice(0, 240);
+      return a
+        .map((g) => {
+          const gt = String(g?.grantType || "vip").toLowerCase();
+          if (gt === "vehicle") return `- Veículo ID \`${g.grantVehicleId || "?"}\``;
+          if (gt === "currency") return `- Dinheiro R$ ${g.grantMoneyAmount ?? "?"}`;
+          if (gt === "xp") return `- +${g.grantXpAmount ?? "?"} XP`;
+          if (gt === "economy")
+            return `- Economia R$ ${g.grantMoneyAmount ?? 0} + ${g.grantXpAmount ?? 0} XP`;
+          return `- VIP **${g.grantTier || "?"}** · ${g.grantDays ?? "?"} dia(s)`;
+        })
+        .join("\n")
+        .slice(0, 900);
+    } catch {
+      return String(raw).slice(0, 240);
     }
-    return lines.join("\n").slice(0, 1020);
+  }
+
+  /**
+   * Metadados do Checkout em português (sem chaves técnicas `grant_*`).
+   * @param {Record<string, string>} md
+   */
+  function formatCheckoutMetadataFriendly(md) {
+    const skip = new Set([
+      "item_name",
+      "item_image_url",
+      "discord_user_id",
+      "roblox_user_id",
+      "guild_id",
+    ]);
+    const lines = [];
+
+    const push = (label, val) => {
+      if (val == null || val === "") return;
+      lines.push(`**${label}:** ${String(val).slice(0, 400)}`);
+    };
+
+    const gt = md.grant_type != null ? prettyGrantTypePt(md.grant_type) : "";
+    if (md.grant_type) push("Tipo de entrega", gt);
+    if (md.grant_tier != null && String(md.grant_tier).trim()) push("VIP", String(md.grant_tier).trim());
+    if (md.grant_days != null && String(md.grant_days).trim() !== "") {
+      const d = String(md.grant_days).trim();
+      const gtl = String(md.grant_type || "").toLowerCase();
+      if (!(d === "0" && gtl && gtl !== "vip")) push("Dias", d);
+    }
+    if (md.grant_vehicle_id) push("Veículo (ID)", `\`${md.grant_vehicle_id}\``);
+    if (md.grant_money_amount != null && String(md.grant_money_amount).trim() !== "")
+      push("Dinheiro (jogo)", `R$ ${String(md.grant_money_amount).trim()}`);
+    if (md.grant_xp_amount != null && String(md.grant_xp_amount).trim() !== "")
+      push("XP (jogo)", String(md.grant_xp_amount).trim());
+    if (md.roblox_grants_json) push("Itens no carrinho", prettyRobloxGrantsJson(md.roblox_grants_json));
+    if (md.coupon_code) push("Cupom", String(md.coupon_code));
+    if (md.discount_percent) push("Desconto", `${md.discount_percent}%`);
+    if (md.discount_cents) push("Desconto (fixo)", `${(Number(md.discount_cents) / 100).toFixed(2)} (moeda sessão)`);
+
+    const known = new Set([
+      "grant_type",
+      "grant_tier",
+      "grant_days",
+      "grant_vehicle_id",
+      "grant_money_amount",
+      "grant_xp_amount",
+      "roblox_grants_json",
+      "coupon_code",
+      "discount_percent",
+      "discount_cents",
+    ]);
+    for (const k of Object.keys(md).sort()) {
+      if (skip.has(k) || known.has(k)) continue;
+      const v = md[k];
+      if (v == null || v === "") continue;
+      push(k.replace(/_/g, " "), String(v).slice(0, 200));
+    }
+
+    return lines.length ? lines.join("\n").slice(0, 1900) : "— *(só dados já mostrados acima)*";
   }
 
   /**
@@ -370,38 +435,8 @@ function startHttpServer(client) {
     const itemName = md.item_name || md.itemName || "—";
 
     const cust = s.customer_details;
-    const custLines = [];
-    if (cust?.email) custLines.push(`Email: ${cust.email}`);
-    if (cust?.name) custLines.push(`Nome: ${cust.name}`);
-    if (cust?.phone) custLines.push(`Telefone: ${cust.phone}`);
-    if (cust?.tax_ids?.length) {
-      custLines.push(
-        `Tax IDs: ${cust.tax_ids.map((t) => (typeof t === "object" && t?.value ? t.value : String(t))).join(", ")}`
-      );
-    }
-    if (cust?.address?.line1 || cust?.address?.country) {
-      const a = cust.address;
-      custLines.push(
-        `Morada: ${[a.line1, a.line2, a.postal_code, a.city, a.state, a.country].filter(Boolean).join(", ")}`.slice(
-          0,
-          400
-        )
-      );
-    }
-    const custBlock = custLines.length ? custLines.join("\n").slice(0, 900) : "—";
-
-    const li = s.line_items?.data || [];
-    const liText = li.length
-      ? li
-          .map((row, i) => {
-            const desc = row.description || row.price?.nickname || "item";
-            const q = row.quantity ?? 1;
-            const unit = row.amount_subtotal != null ? (row.amount_subtotal / 100).toFixed(2) : "?";
-            return `${i + 1}. ${desc} ×${q} → ${unit} ${currency}`;
-          })
-          .join("\n")
-          .slice(0, 900)
-      : "— (sem line_items expandidos)";
+    const custBits = [cust?.email, cust?.name, cust?.address?.country].filter(Boolean);
+    const custBlock = custBits.length ? custBits.join(" · ").slice(0, 500) : "—";
 
     const rid = md.roblox_user_id || md.robloxUserId;
     let robloxBlock = "—";
@@ -417,54 +452,42 @@ function startHttpServer(client) {
     }
 
     const discordUserId = md.discord_user_id || md.discordUserId;
-    const discordBlock = discordUserId
-      ? `ID \`${discordUserId}\`\n<@${discordUserId}>`
-      : "— *(metadata sem discord_user_id)*";
+    const discordBlock = discordUserId ? `<@${discordUserId}> · \`${discordUserId}\`` : "—";
 
-    const metaLines = Object.keys(md)
-      .sort()
-      .map((k) => `${k}: ${String(md[k]).slice(0, 200)}`);
-    const metaBlock = metaLines.length ? metaLines.join("\n").slice(0, 3500) : "—";
+    const pagoPt = String(s.payment_status || "") === "paid" ? "Pago" : String(s.payment_status || "—");
+    const valorLinha =
+      sub !== total && sub !== "—"
+        ? `**${total}** (subtotal ${sub}) · ${pagoPt}`
+        : `**${total}** · ${pagoPt}`;
 
-    const payBlock = formatStripePaymentBlock(s);
+    const payBlock = formatStripePaymentShort(s);
+    const detalhesPedido = formatCheckoutMetadataFriendly(md);
 
-    const embed1 = new EmbedBuilder()
+    const sid = String(s.id || "");
+
+    const embed = new EmbedBuilder()
       .setColor(0x5865f2)
-      .setTitle("Transação — log completo (staff)")
-      .setDescription(`**${String(itemName).slice(0, 200)}**`)
+      .setTitle("Transação (staff)")
+      .setDescription(`**${String(itemName).slice(0, 250)}**`)
       .addFields(
-        { name: "Stripe Checkout", value: `\`${s.id}\``, inline: true },
-        { name: "Modo", value: String(s.mode || "—"), inline: true },
-        { name: "Pagamento", value: String(s.payment_status || "—"), inline: true },
-        { name: "Valores", value: `Total: **${total}**\nSubtotal: ${sub}`, inline: false },
-        { name: "Cliente (Checkout)", value: custBlock.slice(0, 1024), inline: false },
-        { name: "Linhas (Stripe)", value: liText || "—", inline: false },
-        { name: "Método / meio (Stripe)", value: payBlock || "—", inline: false },
+        { name: "Valor", value: valorLinha.slice(0, 256), inline: false },
+        { name: "Cliente (email / nome / país)", value: custBlock.slice(0, 1024), inline: false },
+        { name: "Meio de pagamento", value: (payBlock || "—").slice(0, 1024), inline: false },
         {
-          name: "Roblox",
-          value: robloxBlock.slice(0, 1024),
+          name: "Roblox & Discord",
+          value: `${robloxBlock}\n${discordBlock}`.slice(0, 1024),
           inline: false,
         },
-        { name: "Discord", value: discordBlock.slice(0, 1024), inline: false }
+        { name: "Detalhes do pedido", value: detalhesPedido.slice(0, 1024), inline: false }
       )
-      .setFooter({ text: `${contextLabel} · não partilhar fora da equipa` })
+      .setFooter({ text: `${contextLabel} · ${sid}`.slice(0, 450) })
       .setTimestamp(new Date());
-
-    const metaDesc = (
-      "```\n" +
-      metaBlock.replace(/```/g, "`\u200b``") +
-      "\n```"
-    ).slice(0, 4090);
-    const embed2 = new EmbedBuilder()
-      .setColor(0x2b2d31)
-      .setTitle("Metadata (bruto)")
-      .setDescription(metaDesc);
 
     try {
       const ch = await client.channels.fetch(channelId);
       if (!ch?.isTextBased()) throw new Error("canal log detalhado inválido");
       await ch.send({
-        embeds: [embed1, embed2],
+        embeds: [embed],
         allowedMentions: { parse: [] },
       });
       staffFullLogSent.add(session.id);
