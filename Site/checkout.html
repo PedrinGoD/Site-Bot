@@ -41,42 +41,58 @@
       </header>
 
       <section class="section section--shop-page">
-        <div class="checkout-grid">
-          <article class="checkout-card">
-            <h2 class="checkout-card__title">1) Seu carrinho</h2>
-            <div id="checkout-cart-list"></div>
-            <p class="checkout-card__total" id="checkout-total"></p>
-          </article>
+        <div class="checkout-layout">
+          <div class="checkout-left">
+            <article class="checkout-card">
+              <h2 class="checkout-card__title">Formas de pagamento</h2>
+              <div class="checkout-pay-list">
+                <button class="checkout-pay-option is-active" type="button">💳 Cartão de crédito <small>Stripe</small></button>
+                <button class="checkout-pay-option" type="button" disabled>🧾 Pix <small>em breve</small></button>
+                <button class="checkout-pay-option" type="button" disabled>🅿️ PayPal <small>em breve</small></button>
+              </div>
+            </article>
 
-          <article class="checkout-card">
-            <h2 class="checkout-card__title">2) Login Discord</h2>
-            <p class="checkout-note" id="checkout-discord-status">Verificando sessão…</p>
-            <button class="btn btn--primary" id="checkout-discord-login" type="button">Entrar com Discord</button>
-          </article>
+            <article class="checkout-card">
+              <h2 class="checkout-card__title">Informações de contato</h2>
+              <p class="checkout-note" id="checkout-discord-status">Verificando sessão…</p>
+              <button class="btn btn--primary" id="checkout-discord-login" type="button">Entrar com Discord</button>
+              <div class="checkout-contact-grid">
+                <input class="gear-demo-checkout__input" type="text" placeholder="Nome completo" />
+                <input class="gear-demo-checkout__input" type="email" placeholder="E-mail" />
+                <input class="gear-demo-checkout__input" type="text" placeholder="Telefone" />
+                <input class="gear-demo-checkout__input" type="text" placeholder="ID no jogo (opcional)" />
+              </div>
+            </article>
 
-          <article class="checkout-card">
-            <h2 class="checkout-card__title">3) Conta Roblox (entrega)</h2>
-            <div class="gear-roblox-searchline">
-              <input type="text" id="checkout-roblox-username" class="gear-demo-checkout__input" placeholder="Username Roblox" />
-              <button type="button" class="btn btn--ghost" id="checkout-roblox-search">Buscar</button>
-            </div>
-            <div id="checkout-roblox-preview" class="gear-roblox-preview" hidden></div>
-            <button type="button" class="btn btn--primary gear-roblox-confirm" id="checkout-roblox-confirm" hidden>Confirmar esta conta</button>
-          </article>
+            <article class="checkout-card">
+              <h2 class="checkout-card__title">Conta Roblox para entrega VIP</h2>
+              <div class="gear-roblox-searchline">
+                <input type="text" id="checkout-roblox-username" class="gear-demo-checkout__input" placeholder="Username Roblox" />
+                <button type="button" class="btn btn--ghost" id="checkout-roblox-search">Buscar</button>
+              </div>
+              <div id="checkout-roblox-preview" class="gear-roblox-preview" hidden></div>
+              <button type="button" class="btn btn--primary gear-roblox-confirm" id="checkout-roblox-confirm" hidden>Confirmar esta conta</button>
+            </article>
+          </div>
 
-          <article class="checkout-card">
-            <h2 class="checkout-card__title">4) Cupom</h2>
-            <div class="gear-roblox-searchline">
-              <input type="text" id="checkout-coupon" class="gear-demo-checkout__input" placeholder="Ex.: GEAR10" />
-              <button type="button" class="btn btn--ghost" id="checkout-coupon-apply">Aplicar</button>
-            </div>
-            <p class="checkout-note" id="checkout-coupon-status"></p>
-          </article>
-        </div>
+          <aside class="checkout-right">
+            <article class="checkout-card checkout-card--sticky">
+              <h2 class="checkout-card__title">Resumo do pedido</h2>
+              <div id="checkout-cart-list"></div>
 
-        <div class="checkout-actions">
-          <button class="btn btn--ghost" id="checkout-clear-cart" type="button">Limpar carrinho</button>
-          <button class="btn btn--primary btn--lg" id="checkout-submit" type="button">Finalizar compra</button>
+              <div class="gear-roblox-searchline">
+                <input type="text" id="checkout-coupon" class="gear-demo-checkout__input" placeholder="Digite seu cupom de desconto" />
+                <button type="button" class="btn btn--ghost" id="checkout-coupon-apply">Aplicar</button>
+              </div>
+              <p class="checkout-note" id="checkout-coupon-status"></p>
+
+              <p class="checkout-card__total" id="checkout-total"></p>
+              <div class="checkout-actions">
+                <button class="btn btn--ghost" id="checkout-clear-cart" type="button">Limpar carrinho</button>
+                <button class="btn btn--primary btn--lg" id="checkout-submit" type="button">Pagar agora</button>
+              </div>
+            </article>
+          </aside>
         </div>
         <p class="gear-demo-checkout__err" id="checkout-err" hidden></p>
       </section>
