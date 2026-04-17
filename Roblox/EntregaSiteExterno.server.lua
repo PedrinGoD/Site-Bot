@@ -18,7 +18,7 @@ local MessagingService = game:GetService("MessagingService")
 
 local CONFIG = {
 	API_BASE = "https://bot-gear.onrender.com",
-	API_SECRET = "COLOQUE_O_MESMO_SECRET_DO_BOT_AQUI",
+	API_SECRET = "K-gwS_hGeZivSFZvfv3v4_nybguXS8iD",
 	POLL_INTERVAL = 12,
 	MAX_POLLS = 60,
 }
