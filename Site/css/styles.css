@@ -39,9 +39,13 @@ body {
 }
 
 body.checkout-page {
-  background-image: linear-gradient(rgba(5, 7, 14, 0.78), rgba(5, 7, 14, 0.88)), url("assets/checkout-bg-gearup.png");
-  background-size: cover;
-  background-position: center;
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(255, 107, 0, 0.2), transparent 40%),
+    radial-gradient(circle at 80% 18%, rgba(126, 200, 227, 0.16), transparent 42%),
+    linear-gradient(rgba(5, 7, 14, 0.8), rgba(5, 7, 14, 0.9)),
+    url("assets/gear-up-logo.png");
+  background-size: auto, auto, auto, cover;
+  background-position: center, center, center, center;
   background-attachment: fixed;
 }
 
@@ -1541,7 +1545,8 @@ dialog.gear-demo-checkout[open] {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1rem;
-  background: var(--surface);
+  background: linear-gradient(180deg, rgba(20, 22, 36, 0.92), rgba(13, 14, 24, 0.92));
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
 
 .checkout-card__title {
@@ -1570,6 +1575,8 @@ dialog.gear-demo-checkout[open] {
   color: #d7dae8;
   padding: 0.75rem 0.85rem;
   font: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
 }
 
 .checkout-pay-option small {
@@ -1580,6 +1587,11 @@ dialog.gear-demo-checkout[open] {
 .checkout-pay-option.is-active {
   border-color: rgba(126, 200, 227, 0.7);
   box-shadow: 0 0 0 1px rgba(126, 200, 227, 0.25);
+}
+
+.checkout-pay-option:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
 }
 
 .checkout-contact-grid {
