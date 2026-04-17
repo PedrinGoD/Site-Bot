@@ -5,7 +5,7 @@ function initCommon() {
   const url =
     typeof window.ROBLOX_PLACE_URL === "string"
       ? window.ROBLOX_PLACE_URL
-      : "https://www.roblox.com/pt/games/PLACEHOLDER";
+      : "https://www.roblox.com/pt/games/140001935550545/Gear-Up";
 
   document.querySelectorAll(".js-roblox-link").forEach((el) => {
     el.setAttribute("href", url);
