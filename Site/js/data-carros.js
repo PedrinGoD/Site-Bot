@@ -62,23 +62,4 @@ window.GEAR_SHOP_ITEMS = [
     image: "assets/carros/Porsche 911 GT3.png",
     imageAlt: "Porsche 911 GT3",
   },
-
-  {
-    badge: "Kit visual",
-    badgeVariant: "car",
-    title: "Pacote neon + rodas",
-    price: "R$ 19,90",
-    href: "#",
-    image: "assets/carros/pacote-neon-rodas.png",
-    imageAlt: "Pacote neon e rodas",
-  },
-  {
-    badge: "Bundle",
-    badgeVariant: "car",
-    title: "Starter Pack Piloto",
-    price: "R$ 39,90",
-    href: "#",
-    image: "assets/carros/starter-pack-piloto.png",
-    imageAlt: "Starter Pack Piloto",
-  },
 ];
