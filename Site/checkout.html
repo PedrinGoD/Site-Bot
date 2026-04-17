@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Gear UP — Finalizar compra do carrinho." />
+    <title>Gear UP — Checkout</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="fire-glow" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="index.html">
+          <img src="assets/gear-up-logo.png" alt="Gear UP" width="48" height="48" class="brand__logo" />
+          <span class="brand__text">Gear UP</span>
+        </a>
+        <nav class="nav" aria-label="Principal">
+          <a href="index.html" class="nav__link">Início</a>
+          <a href="vip.html" class="nav__link">VIP</a>
+          <a href="carros.html" class="nav__link">Carros</a>
+          <a href="pacotes.html" class="nav__link">Pacotes</a>
+          <a href="checkout.html" class="nav__link nav__link--active">Checkout</a>
+          <a href="#" class="nav__cta js-roblox-link">Jogar</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="page-main">
+      <header class="page-head">
+        <p class="page-head__eyebrow">Pagamento</p>
+        <h1 class="page-head__title">Finalizar compra</h1>
+        <p class="page-head__lead">Tudo em uma página: carrinho, Discord, Roblox e cupom.</p>
+      </header>
+
+      <section class="section section--shop-page">
+        <div class="checkout-grid">
+          <article class="checkout-card">
+            <h2 class="checkout-card__title">1) Seu carrinho</h2>
+            <div id="checkout-cart-list"></div>
+            <p class="checkout-card__total" id="checkout-total"></p>
+          </article>
+
+          <article class="checkout-card">
+            <h2 class="checkout-card__title">2) Login Discord</h2>
+            <p class="checkout-note" id="checkout-discord-status">Verificando sessão…</p>
+            <button class="btn btn--primary" id="checkout-discord-login" type="button">Entrar com Discord</button>
+          </article>
+
+          <article class="checkout-card">
+            <h2 class="checkout-card__title">3) Conta Roblox (entrega)</h2>
+            <div class="gear-roblox-searchline">
+              <input type="text" id="checkout-roblox-username" class="gear-demo-checkout__input" placeholder="Username Roblox" />
+              <button type="button" class="btn btn--ghost" id="checkout-roblox-search">Buscar</button>
+            </div>
+            <div id="checkout-roblox-preview" class="gear-roblox-preview" hidden></div>
+            <button type="button" class="btn btn--primary gear-roblox-confirm" id="checkout-roblox-confirm" hidden>Confirmar esta conta</button>
+          </article>
+
+          <article class="checkout-card">
+            <h2 class="checkout-card__title">4) Cupom</h2>
+            <div class="gear-roblox-searchline">
+              <input type="text" id="checkout-coupon" class="gear-demo-checkout__input" placeholder="Ex.: GEAR10" />
+              <button type="button" class="btn btn--ghost" id="checkout-coupon-apply">Aplicar</button>
+            </div>
+            <p class="checkout-note" id="checkout-coupon-status"></p>
+          </article>
+        </div>
+
+        <div class="checkout-actions">
+          <button class="btn btn--ghost" id="checkout-clear-cart" type="button">Limpar carrinho</button>
+          <button class="btn btn--primary btn--lg" id="checkout-submit" type="button">Finalizar compra</button>
+        </div>
+        <p class="gear-demo-checkout__err" id="checkout-err" hidden></p>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p class="footer__copy">© <span id="year"></span> Gear UP.</p>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/discord-auth.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/checkout-page.js"></script>
+  </body>
+</html>

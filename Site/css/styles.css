@@ -1312,3 +1312,139 @@ dialog.gear-demo-checkout[open] {
 .gear-cart-coupon {
   margin-top: 0.4rem;
 }
+
+.nav-cart {
+  position: relative;
+}
+
+.nav-cart__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-cart__icon {
+  font-size: 1rem;
+}
+
+.nav-cart__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  height: 1.35rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: var(--fire-2);
+  color: #111;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.nav-cart.has-items .nav-cart__button {
+  animation: cartPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cartPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.04); opacity: 0.82; }
+}
+
+.nav-cart__preview {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  width: 280px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.7rem;
+  z-index: 50;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  display: none;
+}
+
+.nav-cart:hover .nav-cart__preview,
+.nav-cart:focus-within .nav-cart__preview {
+  display: block;
+}
+
+.nav-cart__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  margin-bottom: 0.35rem;
+}
+
+.nav-cart__more,
+.nav-cart__empty,
+.nav-cart__total {
+  margin: 0.35rem 0 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.checkout-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.checkout-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  background: var(--surface);
+}
+
+.checkout-card__title {
+  margin: 0 0 0.8rem;
+  font-family: var(--font-display);
+  color: var(--fire-2);
+  letter-spacing: 0.03em;
+}
+
+.checkout-note {
+  margin: 0.2rem 0 0.7rem;
+  color: var(--muted);
+}
+
+.checkout-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  margin-bottom: 0.55rem;
+}
+
+.checkout-line__actions {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.checkout-line__actions .btn {
+  min-width: 34px;
+  padding: 0.3rem 0.5rem;
+}
+
+.checkout-card__total {
+  margin: 0.7rem 0 0;
+  font-weight: 700;
+}
+
+.checkout-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.7rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 920px) {
+  .checkout-grid {
+    grid-template-columns: 1fr;
+  }
+}
