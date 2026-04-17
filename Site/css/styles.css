@@ -34,7 +34,15 @@ body {
   font-size: 1rem;
   line-height: 1.55;
   color: var(--text);
-  background: var(--bg-deep);
+  background-color: var(--bg-deep);
+  background-image:
+    radial-gradient(circle at 18% 22%, rgba(255, 107, 0, 0.16), transparent 40%),
+    radial-gradient(circle at 80% 18%, rgba(126, 200, 227, 0.13), transparent 42%),
+    linear-gradient(rgba(5, 7, 14, 0.82), rgba(5, 7, 14, 0.92)),
+    url("assets/gear-up-logo.png");
+  background-size: auto, auto, auto, cover;
+  background-position: center, center, center, center;
+  background-attachment: fixed;
   overflow-x: hidden;
 }
 
@@ -42,11 +50,8 @@ body.checkout-page {
   background-image:
     radial-gradient(circle at 18% 22%, rgba(255, 107, 0, 0.2), transparent 40%),
     radial-gradient(circle at 80% 18%, rgba(126, 200, 227, 0.16), transparent 42%),
-    linear-gradient(rgba(5, 7, 14, 0.8), rgba(5, 7, 14, 0.9)),
+    linear-gradient(rgba(5, 7, 14, 0.78), rgba(5, 7, 14, 0.88)),
     url("assets/gear-up-logo.png");
-  background-size: auto, auto, auto, cover;
-  background-position: center, center, center, center;
-  background-attachment: fixed;
 }
 
 body.checkout-page::before {
