@@ -161,7 +161,10 @@
   }
 
   function requiresRobloxConfirmation() {
-    return cartItems.some((it) => String(it.grantTier || "").trim() !== "");
+    return cartItems.some(
+      (it) =>
+        String(it.grantTier || "").trim() !== "" || String(it.grantVehicleId || "").trim() !== ""
+    );
   }
 
   async function submitCheckout() {
@@ -197,7 +200,7 @@
     if (requiresRobloxConfirmation() && !robloxConfirmedUserId) {
       if (errEl) {
         errEl.hidden = false;
-        errEl.textContent = "Confirme a conta Roblox que vai receber o item VIP.";
+        errEl.textContent = "Confirme a conta Roblox que vai receber o VIP ou o veículo.";
       }
       return;
     }
@@ -213,6 +216,7 @@
         quantity: Math.max(1, parseInt(it.quantity, 10) || 1),
         itemImageUrl: it.itemImageUrl || undefined,
         grantTier: it.grantTier || undefined,
+        grantVehicleId: it.grantVehicleId || undefined,
         grantType: it.grantType || undefined,
         grantDays: parseInt(it.grantDays, 10) || 0,
       })),

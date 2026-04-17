@@ -47,8 +47,8 @@
       <div class="product-card__price">${escapeHtml(p.price)}</div>
       ${p.note ? `<p class="product-card__note">${escapeHtml(p.note)}</p>` : ""}
       <div class="product-card__actions">
-        <a class="btn btn--primary js-cart-add" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(p.title)}" data-checkout-price="${escapeAttr(p.price)}" data-checkout-cents="${escapeAttr(String(p.stripeAmountCents != null ? p.stripeAmountCents : 100))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${p.grantType ? escapeAttr(p.grantType) : ""}" data-grant-tier="${p.grantTier ? escapeAttr(p.grantTier) : ""}" data-grant-days="${p.grantDays != null ? escapeAttr(String(p.grantDays)) : ""}">Adicionar ao carrinho</a>
-        <a class="btn btn--ghost js-cart-buy-now" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(p.title)}" data-checkout-price="${escapeAttr(p.price)}" data-checkout-cents="${escapeAttr(String(p.stripeAmountCents != null ? p.stripeAmountCents : 100))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${p.grantType ? escapeAttr(p.grantType) : ""}" data-grant-tier="${p.grantTier ? escapeAttr(p.grantTier) : ""}" data-grant-days="${p.grantDays != null ? escapeAttr(String(p.grantDays)) : ""}">Comprar agora</a>
+        <a class="btn btn--primary js-cart-add" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(p.title)}" data-checkout-price="${escapeAttr(p.price)}" data-checkout-cents="${escapeAttr(String(p.stripeAmountCents != null ? p.stripeAmountCents : 100))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${p.grantType ? escapeAttr(p.grantType) : ""}" data-grant-tier="${p.grantTier ? escapeAttr(p.grantTier) : ""}" data-grant-vehicle-id="${p.grantVehicleId ? escapeAttr(String(p.grantVehicleId).trim()) : ""}" data-grant-days="${p.grantDays != null ? escapeAttr(String(p.grantDays)) : ""}">Adicionar ao carrinho</a>
+        <a class="btn btn--ghost js-cart-buy-now" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(p.title)}" data-checkout-price="${escapeAttr(p.price)}" data-checkout-cents="${escapeAttr(String(p.stripeAmountCents != null ? p.stripeAmountCents : 100))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${p.grantType ? escapeAttr(p.grantType) : ""}" data-grant-tier="${p.grantTier ? escapeAttr(p.grantTier) : ""}" data-grant-vehicle-id="${p.grantVehicleId ? escapeAttr(String(p.grantVehicleId).trim()) : ""}" data-grant-days="${p.grantDays != null ? escapeAttr(String(p.grantDays)) : ""}">Comprar agora</a>
       </div>
     </article>`;
   }
@@ -79,6 +79,8 @@
         : tierMap[sec.id] || "";
     const grantDays = p.grantDays != null ? p.grantDays : 1;
     const grantType = p.grantType && String(p.grantType).trim() !== "" ? String(p.grantType).trim() : "vip";
+    const grantVehicleId =
+      p.grantVehicleId && String(p.grantVehicleId).trim() !== "" ? String(p.grantVehicleId).trim() : "";
     return `
     <article class="product-card product-card--vip">
       <button type="button" class="product-card__vip-trigger" aria-haspopup="dialog" aria-controls="${escapeAttr(dlgId)}">
@@ -90,8 +92,8 @@
         </span>
       </button>
       <div class="product-card__actions product-card__actions--vip">
-        <a class="btn btn--primary js-cart-add" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(sec.title + " — " + p.title)}" data-checkout-price="${escapeAttr(p.price)}" data-checkout-cents="${escapeAttr(String(p.stripeAmountCents != null ? p.stripeAmountCents : 100))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${escapeAttr(grantType)}" data-grant-tier="${grantTier ? escapeAttr(grantTier) : ""}" data-grant-days="${escapeAttr(String(grantDays))}">Adicionar ao carrinho</a>
-        <a class="btn btn--ghost js-cart-buy-now" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(sec.title + " — " + p.title)}" data-checkout-price="${escapeAttr(p.price)}" data-checkout-cents="${escapeAttr(String(p.stripeAmountCents != null ? p.stripeAmountCents : 100))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${escapeAttr(grantType)}" data-grant-tier="${grantTier ? escapeAttr(grantTier) : ""}" data-grant-days="${escapeAttr(String(grantDays))}">Comprar agora</a>
+        <a class="btn btn--primary js-cart-add" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(sec.title + " — " + p.title)}" data-checkout-price="${escapeAttr(p.price)}" data-checkout-cents="${escapeAttr(String(p.stripeAmountCents != null ? p.stripeAmountCents : 100))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${escapeAttr(grantType)}" data-grant-tier="${grantTier ? escapeAttr(grantTier) : ""}" data-grant-vehicle-id="${grantVehicleId ? escapeAttr(grantVehicleId) : ""}" data-grant-days="${escapeAttr(String(grantDays))}">Adicionar ao carrinho</a>
+        <a class="btn btn--ghost js-cart-buy-now" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(sec.title + " — " + p.title)}" data-checkout-price="${escapeAttr(p.price)}" data-checkout-cents="${escapeAttr(String(p.stripeAmountCents != null ? p.stripeAmountCents : 100))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${escapeAttr(grantType)}" data-grant-tier="${grantTier ? escapeAttr(grantTier) : ""}" data-grant-vehicle-id="${grantVehicleId ? escapeAttr(grantVehicleId) : ""}" data-grant-days="${escapeAttr(String(grantDays))}">Comprar agora</a>
       </div>
       <dialog class="vip-detail-dialog" id="${escapeAttr(dlgId)}" aria-labelledby="${escapeAttr(titleId)}">
         <div class="vip-detail-dialog__backdrop" aria-hidden="true"></div>

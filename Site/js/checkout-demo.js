@@ -38,15 +38,17 @@
     const itemName = (a && a.getAttribute("data-checkout-item")) || "Item";
     const amountCents = parseInt((a && a.getAttribute("data-checkout-cents")) || "100", 10);
     const grantTier = ((a && a.getAttribute("data-grant-tier")) || "").trim();
+    const grantVehicleId = ((a && a.getAttribute("data-grant-vehicle-id")) || "").trim();
     const grantType = ((a && a.getAttribute("data-grant-type")) || "vip").trim() || "vip";
     const grantDays = parseInt((a && a.getAttribute("data-grant-days")) || "0", 10) || 0;
     return {
-      id: [itemName, String(amountCents), grantTier, grantType, String(grantDays)].join("|"),
+      id: [itemName, String(amountCents), grantTier, grantType, String(grantDays), grantVehicleId].join("|"),
       itemName,
       amountCents: Number.isNaN(amountCents) ? 100 : Math.max(50, amountCents),
       quantity: 1,
       itemImageUrl: resolveItemImageUrl(a),
       grantTier,
+      grantVehicleId,
       grantType,
       grantDays,
     };

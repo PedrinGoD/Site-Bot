@@ -1,65 +1,96 @@
 /**
- * Catálogo — veículos / kits visuais
+ * Catálogo — carros à venda no site (carros.html)
  *
- * Por item, use opcionalmente:
- *   image      — caminho relativo à pasta do site, ex.: "assets/carros/meu-carro.png"
- *   imageAlt   — texto alternativo (acessibilidade); se omitir, usa o title
- *
- * Coloque os ficheiros em Site/assets/carros/ (crie a pasta se ainda não existir).
+ * O QUE TU EDITAS:
+ * 1) Imagem: ficheiro em Site/assets/carros/  →  campo "image" com o caminho.
+ * 2) Nome no jogo: "grantVehicleId" tem de ser IGUAL a "NomeInventario" no ModuleScript
+ *    ConcessionariaCatalogo (Roblox), ex.: Ferrari_F50, BMW_M4CS_2018.
+ * 3) Preço no Stripe: "stripeAmountCents" = valor em centavos (6490 = R$ 64,90).
+ * 4) Sempre: grantType "vehicle", grantDays 0 (permanente).
  */
 window.GEAR_SHOP_ITEMS = [
   {
     badge: "Veículo",
     badgeVariant: "car",
     title: "BMW M4",
+    desc: "Entrega automática na garagem após o pagamento.",
     price: "R$ 64,90",
     href: "#",
-    image: "assets/carros/BME M4.png",
-    imageAlt: "BME M4",
+    image: "assets/carros/BMW M4.png",
+    imageAlt: "BMW M4",
+    stripeAmountCents: 6490,
+    grantType: "vehicle",
+    grantVehicleId: "BMW_M4CS_2018",
+    grantDays: 0,
   },
   {
     badge: "Veículo",
     badgeVariant: "car",
     title: "Ferrari F 50",
+    desc: "Entrega automática na garagem após o pagamento.",
     price: "R$ 69,90",
     href: "#",
     image: "assets/carros/Ferrari F 50.png",
     imageAlt: "Ferrari F 50",
+    stripeAmountCents: 6990,
+    grantType: "vehicle",
+    grantVehicleId: "Ferrari_F50",
+    grantDays: 0,
   },
   {
     badge: "Veículo",
     badgeVariant: "car",
     title: "Ferrari SF 90",
+    desc: "Entrega automática na garagem após o pagamento.",
     price: "R$ 74,90",
     href: "#",
     image: "assets/carros/Ferrari SF 90.png",
     imageAlt: "Ferrari SF 90",
+    stripeAmountCents: 7490,
+    grantType: "vehicle",
+    grantVehicleId: "Ferrari_SF90",
+    grantDays: 0,
   },
   {
     badge: "Veículo",
     badgeVariant: "car",
     title: "Koenigsegg Jesko",
+    desc: "Entrega automática na garagem após o pagamento.",
     price: "R$ 79,90",
     href: "#",
     image: "assets/carros/Jesko.png",
     imageAlt: "Jesko",
+    stripeAmountCents: 7990,
+    grantType: "vehicle",
+    grantVehicleId: "Koenigsegg_Jesko",
+    grantDays: 0,
   },
   {
     badge: "Veículo",
     badgeVariant: "car",
     title: "McLaren Senna",
+    desc: "Entrega automática na garagem após o pagamento.",
     price: "R$ 64,90",
     href: "#",
     image: "assets/carros/McLaren Senna.png",
     imageAlt: "McLaren Senna",
+    stripeAmountCents: 6490,
+    grantType: "vehicle",
+    grantVehicleId: "McLaren_Senna",
+    grantDays: 0,
   },
   {
     badge: "Veículo",
     badgeVariant: "car",
     title: "Porsche 911 GT3",
+    desc: "Entrega automática na garagem após o pagamento.",
     price: "R$ 78,90",
     href: "#",
     image: "assets/carros/Porsche 911 GT3.png",
     imageAlt: "Porsche 911 GT3",
+    stripeAmountCents: 7890,
+    grantType: "vehicle",
+    grantVehicleId: "Porsche_911_GT3",
+    grantDays: 0,
   },
 ];

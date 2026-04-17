@@ -28,6 +28,12 @@ let memoryGrants = loadFile();
 
 const VALID_TIERS = { Bronze: true, Gold: true, Diamante: true };
 
+const VEHICLE_ID_RE = /^[\w-]{1,64}$/;
+
+function isValidVehicleId(id) {
+  return typeof id === "string" && VEHICLE_ID_RE.test(id);
+}
+
 /**
  * Enfileira entrega no jogo após pagamento Stripe (metadata).
  * Idempotente por stripeSessionId.
@@ -35,16 +41,51 @@ const VALID_TIERS = { Bronze: true, Gold: true, Diamante: true };
  * @param {object} params
  * @param {string} params.stripeSessionId
  * @param {string} params.robloxUserId
- * @param {string} params.grantType — ex.: "vip"
- * @param {string} params.grantTier — Bronze | Gold | Diamante
- * @param {number} params.grantDays
+ * @param {string} [params.grantType] — "vip" | "vehicle"
+ * @param {string} [params.grantTier] — Bronze | Gold | Diamante (VIP)
+ * @param {number} [params.grantDays]
+ * @param {string} [params.grantVehicleId] — NomeInventario do ConcessionariaCatalogo (vehicle)
  */
 function queueGrantAfterPayment(params) {
-  const { stripeSessionId, robloxUserId, grantType, grantTier, grantDays } = params;
-  if (!stripeSessionId || !robloxUserId || !grantTier) {
+  const { stripeSessionId, robloxUserId, grantType, grantTier, grantDays, grantVehicleId } = params;
+  if (!stripeSessionId || !robloxUserId) {
     return null;
   }
-  if (!VALID_TIERS[grantTier]) {
+
+  const gtype = String(grantType || "vip").trim().toLowerCase() || "vip";
+
+  if (gtype === "vehicle") {
+    const vid = String(grantVehicleId || "").trim();
+    if (!isValidVehicleId(vid)) {
+      console.warn("[roblox] grantVehicleId inválido:", grantVehicleId);
+      return null;
+    }
+    if (memoryGrants.some((g) => g.stripeSessionId === stripeSessionId)) {
+      return null;
+    }
+    const id = crypto.randomUUID();
+    const grant = {
+      id,
+      robloxUserId: String(robloxUserId),
+      grantType: "vehicle",
+      grantTier: "",
+      grantVehicleId: vid,
+      grantDays: 0,
+      stripeSessionId,
+      createdAt: Date.now(),
+      acknowledged: false,
+    };
+    memoryGrants.push(grant);
+    try {
+      saveFile(memoryGrants);
+    } catch (e) {
+      console.error("[roblox] aviso: não gravou em disco; grant só em RAM nesta instância:", e.message || e);
+    }
+    console.log(`[roblox] fila: vehicle ${id} UserId=${robloxUserId} ${vid} (sessão ${stripeSessionId.slice(0, 12)}…)`);
+    return id;
+  }
+
+  if (!grantTier || !VALID_TIERS[grantTier]) {
     console.warn("[roblox] grantTier inválido:", grantTier);
     return null;
   }
@@ -103,4 +144,5 @@ module.exports = {
   getPendingForRobloxUser,
   acknowledgeByIds,
   VALID_TIERS,
+  isValidVehicleId,
 };

@@ -18,7 +18,7 @@ local MessagingService = game:GetService("MessagingService")
 
 local CONFIG = {
 	API_BASE = "https://bot-gear.onrender.com",
-	API_SECRET = "K-gwS_hGeZivSFZvfv3v4_nybguXS8iD",
+	API_SECRET = "COLOQUE_O_MESMO_SECRET_DO_BOT_AQUI",
 	POLL_INTERVAL = 12,
 	MAX_POLLS = 60,
 }
@@ -126,6 +126,86 @@ local function publishVipLive(userId, nivel, novaExp, isRemovendo)
 	end)
 end
 
+--- Igual ao que GerenciadorDeDadosMaster grava em data.Inventario[nome]
+local function defaultVehicleSaveBlock()
+	return {
+		CorDoCarro = "",
+		MotorAtual = 0,
+		CombustivelSalvo = 100,
+		FL = "Padrao",
+		FR = "Padrao",
+		RL = "Padrao",
+		RR = "Padrao",
+		Suspensao = {
+			Nome = "Padrao",
+			Altura = 2,
+			Rigidez = 4500,
+			Amortecimento = 500,
+		},
+	}
+end
+
+local function persistVehicleInMasterStore(userId, nomeInventario)
+	local ok = false
+	for attempt = 1, 4 do
+		local success = pcall(function()
+			MasterDataStore:UpdateAsync(tostring(userId), function(dadosAntigos)
+				local dados = dadosAntigos or {}
+				dados.Inventario = dados.Inventario or {}
+				if dados.Inventario[nomeInventario] ~= nil then
+					return dados
+				end
+				dados.Inventario[nomeInventario] = defaultVehicleSaveBlock()
+				return dados
+			end)
+		end)
+		if success then
+			ok = true
+			break
+		end
+		task.wait(1.5)
+	end
+	return ok
+end
+
+local function addVehicleToPlayerInventoryFolder(player, nomeInventario)
+	local inv = player:FindFirstChild("InventarioVeiculos")
+	if not inv then
+		return false
+	end
+	if inv:FindFirstChild(nomeInventario) then
+		return true
+	end
+	local rec = Instance.new("StringValue")
+	rec.Name = nomeInventario
+	rec.Value = "Comprado"
+	rec:SetAttribute("CorDoCarro", "")
+	rec:SetAttribute("MotorAtual", 0)
+	rec:SetAttribute("CombustivelSalvo", 100)
+	rec:SetAttribute("FL", "Padrao")
+	rec:SetAttribute("FR", "Padrao")
+	rec:SetAttribute("RL", "Padrao")
+	rec:SetAttribute("RR", "Padrao")
+	rec:SetAttribute("SuspensaoNome", "Padrao")
+	rec:SetAttribute("SuspensaoAltura", 2)
+	rec:SetAttribute("SuspensaoRigidez", 4500)
+	rec:SetAttribute("SuspensaoAmortecimento", 500)
+	rec.Parent = inv
+	return true
+end
+
+local function deliverVehicleGrant(userId, nomeInventario)
+	if not persistVehicleInMasterStore(userId, nomeInventario) then
+		warn("[EntregaSiteExterno] DataStore falhou ao registar veículo", nomeInventario, userId)
+		return false
+	end
+	local plr = Players:GetPlayerByUserId(userId)
+	if plr then
+		addVehicleToPlayerInventoryFolder(plr, nomeInventario)
+	end
+	return true
+end
+
 local function httpGetPending(userId)
 	local url = CONFIG.API_BASE .. "/roblox/pending-grants?userId=" .. tostring(userId)
 	local res = HttpService:RequestAsync({
@@ -159,8 +239,26 @@ local function httpAckGrantIds(grantIds)
 end
 
 local function grantOne(player, g)
-	local grantType = g.grantType or g.grant_type or "vip"
+	local grantType = string.lower(tostring(g.grantType or g.grant_type or "vip"))
 	local tier = g.grantTier or g.grant_tier
+
+	if grantType == "vehicle" then
+		local vid = g.grantVehicleId or g.grant_vehicle_id
+		if type(vid) ~= "string" or vid == "" then
+			return false
+		end
+		if not string.match(vid, "^[%w%-_]+$") then
+			warn("[EntregaSiteExterno] grantVehicleId inválido:", vid)
+			return false
+		end
+		local uid = player.UserId
+		if deliverVehicleGrant(uid, vid) then
+			print("[EntregaSiteExterno] Veículo entregue:", vid, "userId:", uid)
+			return true
+		end
+		return false
+	end
+
 	if grantType == "vip" and tier and VIP_LEVELS[tier] then
 		local uid = player.UserId
 		local dias = tonumber(g.grantDays or g.grant_days) or 0
@@ -178,7 +276,7 @@ local function grantOne(player, g)
 			return true
 		end
 		warn("[EntregaSiteExterno] DataStore UpdateAsync falhou para", tier, uid)
-	elseif tier and not VIP_LEVELS[tier] then
+	elseif tier and tier ~= "" and not VIP_LEVELS[tier] then
 		warn("[EntregaSiteExterno] tier desconhecido (esperado Bronze/Gold/Diamante):", tier)
 	end
 	return false

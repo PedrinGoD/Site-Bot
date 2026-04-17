@@ -404,14 +404,28 @@ function startHttpServer(client) {
         const grants = JSON.parse(grantsJson);
         if (Array.isArray(grants)) {
           grants.forEach((g, idx) => {
-            const tier = g && g.grantTier ? String(g.grantTier) : "";
+            const days = parseInt(String(g && g.grantDays != null ? g.grantDays : "0"), 10);
+            const gtype = String((g && g.grantType) || "vip")
+              .trim()
+              .toLowerCase();
+            const vid = g && g.grantVehicleId ? String(g.grantVehicleId).trim() : "";
+            const tier = g && g.grantTier ? String(g.grantTier).trim() : "";
+            if (gtype === "vehicle" && vid) {
+              robloxGrants.queueGrantAfterPayment({
+                stripeSessionId: `${session.id}:${idx}`,
+                robloxUserId: String(rid),
+                grantType: "vehicle",
+                grantTier: "",
+                grantDays: 0,
+                grantVehicleId: vid,
+              });
+              return;
+            }
             if (!tier) return;
-            const days = parseInt(String(g.grantDays || "0"), 10);
-            const gtype = String((g && g.grantType) || "vip").trim() || "vip";
             robloxGrants.queueGrantAfterPayment({
               stripeSessionId: `${session.id}:${idx}`,
               robloxUserId: String(rid),
-              grantType: gtype,
+              grantType: gtype || "vip",
               grantTier: tier,
               grantDays: days,
             });
@@ -423,17 +437,32 @@ function startHttpServer(client) {
       }
     }
 
+    const gtypeSingle = String(md.grant_type || md.grantType || "vip")
+      .trim()
+      .toLowerCase();
+    const vidSingle = String(md.grant_vehicle_id || md.grantVehicleId || "").trim();
+    if (gtypeSingle === "vehicle" && vidSingle) {
+      robloxGrants.queueGrantAfterPayment({
+        stripeSessionId: session.id,
+        robloxUserId: String(rid),
+        grantType: "vehicle",
+        grantTier: "",
+        grantDays: 0,
+        grantVehicleId: vidSingle,
+      });
+      return;
+    }
+
     const tier = md.grant_tier || md.grantTier;
     if (!tier) {
-      console.log("[roblox] sessão paga com roblox_user_id mas sem grant_tier (produto sem VIP?) — nada enfileirado");
+      console.log("[roblox] sessão paga com roblox_user_id mas sem grant_tier / grant_vehicle_id — nada enfileirado");
       return;
     }
     const days = parseInt(String(md.grant_days || md.grantDays || "0"), 10);
-    const gtype = String(md.grant_type || md.grantType || "vip").trim() || "vip";
     robloxGrants.queueGrantAfterPayment({
       stripeSessionId: session.id,
       robloxUserId: String(rid),
-      grantType: gtype,
+      grantType: gtypeSingle || "vip",
       grantTier: String(tier),
       grantDays: days,
     });
@@ -500,6 +529,7 @@ function startHttpServer(client) {
       grantType: g.grantType,
       grantTier: g.grantTier,
       grantDays: g.grantDays,
+      grantVehicleId: g.grantVehicleId || undefined,
     }));
     if (grants.length) {
       console.log(`[roblox] pending-grants userId=${uid} → ${grants.length} pendente(s)`);
@@ -699,6 +729,9 @@ function startHttpServer(client) {
         if (Number.isNaN(quantity) || quantity < 1) quantity = 1;
         if (quantity > 30) quantity = 30;
         const grantTier = String((raw && raw.grantTier) || "").trim();
+        const grantVehicleId = String((raw && raw.grantVehicleId) || "")
+          .trim()
+          .slice(0, 64);
         const grantType = String((raw && raw.grantType) || "vip").trim().slice(0, 32) || "vip";
         let grantDays = parseInt(raw && raw.grantDays, 10);
         if (Number.isNaN(grantDays)) grantDays = 0;
@@ -712,6 +745,7 @@ function startHttpServer(client) {
           quantity,
           itemImageUrl: image || undefined,
           grantTier: grantTier || undefined,
+          grantVehicleId: grantVehicleId || undefined,
           grantType: grantType || undefined,
           grantDays,
         };
@@ -720,6 +754,9 @@ function startHttpServer(client) {
       let amountCents = parseInt(req.body.amountCents, 10);
       if (Number.isNaN(amountCents) || amountCents < 50) amountCents = 100;
       const grantTierRaw = String(req.body.grantTier || "").trim();
+      const grantVehicleRaw = String(req.body.grantVehicleId || "")
+        .trim()
+        .slice(0, 64);
       const grantTypeRaw = String(req.body.grantType || "vip").trim().slice(0, 32);
       let grantDaysRaw = parseInt(req.body.grantDays, 10);
       if (Number.isNaN(grantDaysRaw)) grantDaysRaw = 0;
@@ -731,6 +768,7 @@ function startHttpServer(client) {
           quantity: 1,
           itemImageUrl: itemImageUrl || undefined,
           grantTier: grantTierRaw || undefined,
+          grantVehicleId: grantVehicleRaw || undefined,
           grantType: grantTypeRaw || undefined,
           grantDays: grantDaysRaw,
         },
@@ -738,9 +776,24 @@ function startHttpServer(client) {
     }
 
     const robloxUserIdBody = String(req.body.robloxUserId || "").trim();
-    const grantItems = items.filter((it) => it.grantTier);
+    function itemNeedsRobloxDelivery(it) {
+      const gt = String(it.grantType || "vip").trim().toLowerCase();
+      if (gt === "vehicle" && it.grantVehicleId && robloxGrants.isValidVehicleId(String(it.grantVehicleId))) {
+        return true;
+      }
+      return Boolean(it.grantTier && robloxGrants.VALID_TIERS[String(it.grantTier)]);
+    }
+    const grantItems = items.filter(itemNeedsRobloxDelivery);
     for (const gi of grantItems) {
-      if (!robloxGrants.VALID_TIERS[String(gi.grantTier)]) {
+      const gt = String(gi.grantType || "vip").trim().toLowerCase();
+      if (gt === "vehicle") {
+        if (!robloxGrants.isValidVehicleId(String(gi.grantVehicleId || ""))) {
+          return res.status(400).json({
+            ok: false,
+            error: "grantVehicleId inválido (use NomeInventario do catálogo: letras, números, _ e -)",
+          });
+        }
+      } else if (!robloxGrants.VALID_TIERS[String(gi.grantTier)]) {
         return res.status(400).json({ ok: false, error: "grantTier deve ser Bronze, Gold ou Diamante" });
       }
     }
@@ -772,21 +825,35 @@ function startHttpServer(client) {
       if (grantItems.length && robloxUserIdBody) {
         meta.roblox_user_id = robloxUserIdBody;
         if (grantItems.length === 1) {
-          meta.grant_type = grantItems[0].grantType || "vip";
-          meta.grant_tier = grantItems[0].grantTier;
-          meta.grant_days = String(grantItems[0].grantDays || 0);
+          const g0 = grantItems[0];
+          const g0t = String(g0.grantType || "vip").trim().toLowerCase();
+          if (g0t === "vehicle" && g0.grantVehicleId) {
+            meta.grant_type = "vehicle";
+            meta.grant_vehicle_id = String(g0.grantVehicleId).slice(0, 64);
+            meta.grant_days = "0";
+          } else {
+            meta.grant_type = g0.grantType || "vip";
+            meta.grant_tier = g0.grantTier;
+            meta.grant_days = String(g0.grantDays || 0);
+          }
         } else {
-          const compact = grantItems.map((g) => ({
-            grantType: g.grantType || "vip",
-            grantTier: g.grantTier,
-            grantDays: g.grantDays || 0,
-          }));
+          const compact = grantItems.map((g) => {
+            const gt = String(g.grantType || "vip").trim().toLowerCase();
+            if (gt === "vehicle" && g.grantVehicleId) {
+              return { grantType: "vehicle", grantVehicleId: String(g.grantVehicleId).slice(0, 64), grantDays: 0 };
+            }
+            return {
+              grantType: g.grantType || "vip",
+              grantTier: g.grantTier,
+              grantDays: g.grantDays || 0,
+            };
+          });
           const asJson = JSON.stringify(compact);
           if (asJson.length > 500) {
             return res.status(400).json({
               ok: false,
               error:
-                "Carrinho VIP grande demais para metadata Stripe (máx. 500 caracteres). Finalize em duas compras ou reduza itens.",
+                "Carrinho grande demais para metadata Stripe (máx. 500 caracteres). Finalize em duas compras ou reduza itens.",
             });
           }
           meta.roblox_grants_json = asJson;
