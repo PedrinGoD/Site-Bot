@@ -13,7 +13,7 @@
     />
     <link rel="stylesheet" href="css/styles.css" />
   </head>
-  <body>
+  <body class="checkout-page">
     <div class="fire-glow" aria-hidden="true"></div>
 
     <header class="site-header">
@@ -55,13 +55,14 @@
             <article class="checkout-card">
               <h2 class="checkout-card__title">Informações de contato</h2>
               <p class="checkout-note" id="checkout-discord-status">Verificando sessão…</p>
-              <button class="btn btn--primary" id="checkout-discord-login" type="button">Entrar com Discord</button>
-              <div class="checkout-contact-grid">
-                <input class="gear-demo-checkout__input" type="text" placeholder="Nome completo" />
-                <input class="gear-demo-checkout__input" type="email" placeholder="E-mail" />
-                <input class="gear-demo-checkout__input" type="text" placeholder="Telefone" />
-                <input class="gear-demo-checkout__input" type="text" placeholder="ID no jogo (opcional)" />
+              <div class="checkout-discord-user" id="checkout-discord-user" hidden>
+                <img id="checkout-discord-avatar" class="checkout-discord-avatar" src="" alt="" width="44" height="44" />
+                <div class="checkout-discord-meta">
+                  <strong id="checkout-discord-name">-</strong>
+                  <span>Logado com Discord</span>
+                </div>
               </div>
+              <button class="btn btn--primary" id="checkout-discord-login" type="button">Entrar com Discord</button>
             </article>
 
             <article class="checkout-card">

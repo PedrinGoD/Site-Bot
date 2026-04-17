@@ -38,6 +38,22 @@ body {
   overflow-x: hidden;
 }
 
+body.checkout-page {
+  background-image: linear-gradient(rgba(5, 7, 14, 0.78), rgba(5, 7, 14, 0.88)), url("assets/checkout-bg-gearup.png");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+body.checkout-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  z-index: 0;
+}
+
 .fire-glow {
   position: fixed;
   inset: -40% -20% auto;
@@ -1570,6 +1586,38 @@ dialog.gear-demo-checkout[open] {
   display: grid;
   gap: 0.55rem;
   margin-top: 0.7rem;
+}
+
+.checkout-discord-user {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.8rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.checkout-discord-avatar {
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.checkout-discord-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.checkout-discord-meta strong {
+  font-size: 0.95rem;
+}
+
+.checkout-discord-meta span {
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 .checkout-note {

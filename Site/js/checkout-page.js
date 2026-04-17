@@ -128,21 +128,34 @@
   async function refreshDiscordStatus() {
     const status = document.getElementById("checkout-discord-status");
     const btn = document.getElementById("checkout-discord-login");
+    const userBox = document.getElementById("checkout-discord-user");
+    const avatarEl = document.getElementById("checkout-discord-avatar");
+    const nameEl = document.getElementById("checkout-discord-name");
     const auth = window.GearDiscordAuth;
     const token = auth && typeof auth.getToken === "function" ? auth.getToken() : null;
     if (!token) {
       if (status) status.textContent = "Você ainda não está logado no Discord.";
       if (btn) btn.hidden = false;
+      if (userBox) userBox.hidden = true;
       return null;
     }
     try {
       const me = await auth.fetchMe();
       if (status) status.textContent = `Logado como ${me.username}.`;
+      if (userBox) userBox.hidden = false;
+      if (avatarEl && me.avatarUrl) {
+        avatarEl.src = me.avatarUrl;
+        avatarEl.alt = `Avatar de ${me.username}`;
+      }
+      if (nameEl) {
+        nameEl.textContent = me.global_name || me.username || "Usuário";
+      }
       if (btn) btn.hidden = true;
       return me;
     } catch (_) {
       if (status) status.textContent = "Sessão expirada. Faça login novamente.";
       if (btn) btn.hidden = false;
+      if (userBox) userBox.hidden = true;
       return null;
     }
   }
