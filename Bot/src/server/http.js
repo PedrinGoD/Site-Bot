@@ -487,7 +487,8 @@ function startHttpServer(client) {
     try {
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       const result = await tryNotifyDiscordFromCheckoutSession(client, session, "pagamento-ok");
-      return res.json({ ok: true, ...result });
+      // Não misturar { ok: true } com result: result já traz ok/reason e sobrescrever quebrava o cliente.
+      return res.json(result);
     } catch (e) {
       console.error("[stripe] notify-from-session:", e);
       return res.status(500).json({ ok: false, error: String(e.message || e) });
@@ -695,9 +696,14 @@ function startHttpServer(client) {
             grantDays: g.grantDays || 0,
           }));
           const asJson = JSON.stringify(compact);
-          if (asJson.length <= 500) {
-            meta.roblox_grants_json = asJson;
+          if (asJson.length > 500) {
+            return res.status(400).json({
+              ok: false,
+              error:
+                "Carrinho VIP grande demais para metadata Stripe (máx. 500 caracteres). Finalize em duas compras ou reduza itens.",
+            });
           }
+          meta.roblox_grants_json = asJson;
         }
       }
       const couponCode = String(req.body.couponCode || "").trim().toUpperCase();

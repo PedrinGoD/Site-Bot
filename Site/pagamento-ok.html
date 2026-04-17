@@ -64,42 +64,78 @@
         }
         var apiBase = (window.GEAR_STRIPE && window.GEAR_STRIPE.apiBase) || "http://127.0.0.1:3847";
         apiBase = String(apiBase).replace(/\/$/, "");
-        fetch(apiBase + "/stripe/notify-from-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId: sid }),
-        })
-          .then(function (r) {
+
+        function applyResult(data) {
+          if (!el) return "stop";
+          if (data.duplicate) {
+            el.textContent = "Registo no Discord já tinha sido enviado (sem duplicar).";
+            return "stop";
+          }
+          if (data.reason === "not_paid") {
+            return "retry";
+          }
+          if (data.ok) {
+            el.textContent = "Aviso enviado ao canal de vendas no Discord.";
+            return "stop";
+          }
+          if (data.reason === "no_discord_in_metadata") {
+            el.textContent =
+              "Sessão Stripe sem dados do Discord (metadata). Contacta suporte com o ID da sessão.";
+            return "stop";
+          }
+          el.textContent = "Não foi possível notificar o Discord: " + (data.error || JSON.stringify(data));
+          return "stop";
+        }
+
+        function notifyOnce() {
+          return fetch(apiBase + "/stripe/notify-from-session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId: sid }),
+          }).then(function (r) {
             return r.json().then(function (d) {
-              return { ok: r.ok, data: d };
+              return d;
             });
-          })
-          .then(function (_ref) {
-            var data = _ref.data;
-            if (!el) return;
-            if (data.duplicate) {
-              el.textContent = "Registo no Discord já tinha sido enviado (sem duplicar).";
-              return;
-            }
-            if (data.ok && data.reason === "not_paid") {
-              el.textContent =
-                "Pagamento ainda em processamento (" + (data.payment_status || "?") + "). Tenta recarregar em alguns segundos.";
-              return;
-            }
-            if (data.ok) {
-              el.textContent = "Aviso enviado ao canal de vendas no Discord.";
-              return;
-            }
-            el.textContent = "Não foi possível notificar o Discord: " + (data.error || JSON.stringify(data));
-          })
-          .catch(function (e) {
-            if (el)
-              el.textContent =
-                "Não foi possível falar com o bot em " +
-                apiBase +
-                ". Está com npm start? Erro: " +
-                (e.message || e);
           });
+        }
+
+        var attempts = 0;
+        var maxAttempts = 5;
+        var delayMs = 2000;
+
+        function run() {
+          notifyOnce()
+            .then(function (data) {
+              var next = applyResult(data || {});
+              if (next === "retry" && attempts < maxAttempts - 1) {
+                attempts++;
+                if (el)
+                  el.textContent =
+                    "Pagamento a confirmar no Stripe (" +
+                    ((data && data.payment_status) || "?") +
+                    ")… nova tentativa em " +
+                    delayMs / 1000 +
+                    "s.";
+                setTimeout(run, delayMs);
+                return;
+              }
+              if (next === "retry" && el) {
+                el.textContent =
+                  "Pagamento ainda em processamento (" +
+                  ((data && data.payment_status) || "?") +
+                  "). Recarrega a página daqui a pouco ou confirma no Stripe Dashboard.";
+              }
+            })
+            .catch(function (e) {
+              if (el)
+                el.textContent =
+                  "Não foi possível falar com o bot em " +
+                  apiBase +
+                  ". Confirma SITE_BASE_URL/CORS no Render e que o serviço está acordado. Erro: " +
+                  (e.message || e);
+            });
+        }
+        run();
       })();
     </script>
   </body>
