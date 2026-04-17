@@ -43,4 +43,6 @@ window.GEAR_CHECKOUT_DEMO = {
  * Cupons de desconto no frontend (percentual).
  * Ex.: { "GEAR10": 10, "VIP20": 20 }
  */
-window.GEAR_COUPONS = {};
+window.GEAR_COUPONS = {GEAR10: 10,
+  VIP20: 20,
+};
