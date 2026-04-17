@@ -73,88 +73,91 @@
         </div>
       </section>
 
-      <section class="section section--tight" id="jogo">
-        <h2 class="section__title">Por dentro do jogo</h2>
-        <p class="section__intro">
-          Tudo pensado para quem gosta de sensação de velocidade e desafio nas curvas.
-        </p>
-        <ul class="features">
-          <li class="feature">
-            <span class="feature__icon" aria-hidden="true">🏎️</span>
-            <h3 class="feature__title">Corridas intensas</h3>
-            <p>Pistas com ritmo forte e espaço para ultrapassagens e estratégia.</p>
-          </li>
-          <li class="feature">
-            <span class="feature__icon" aria-hidden="true">🔧</span>
-            <h3 class="feature__title">Progressão</h3>
-            <p>Melhore seu desempenho e desbloqueie conteúdos conforme você joga.</p>
-          </li>
-          <li class="feature">
-            <span class="feature__icon" aria-hidden="true">👥</span>
-            <h3 class="feature__title">Comunidade</h3>
-            <p>Dispute com amigos e suba no ranking da comunidade Gear UP.</p>
-          </li>
-        </ul>
-      </section>
+      <section class="section section--home-split">
+        <div class="home-split">
+          <aside class="home-sidebar" aria-labelledby="mais-vendidos">
+            <h2 id="mais-vendidos" class="section__title">Mais vendidos</h2>
+            <p class="section__intro">Destaques rápidos para compra direta.</p>
+            <div class="products home-featured-products">
+              <article class="product-card product-card--has-media">
+                <span class="product-card__badge product-card__badge--gold">VIP</span>
+                <div class="product-card__media">
+                  <img class="product-card__thumb" src="assets/vip-gold.png" alt="VIP Gold" width="400" height="250" loading="lazy" decoding="async" />
+                </div>
+                <h3>VIP Gold — 30 dias</h3>
+                <div class="product-card__price">R$ 39,90</div>
+                <a class="btn btn--primary js-cart-add" href="#" data-checkout-item="VIP Gold — 30 dias" data-checkout-price="R$ 39,90" data-checkout-cents="3990" data-checkout-image="assets/vip-gold.png" data-grant-type="vip" data-grant-tier="Gold" data-grant-days="30">Adicionar</a>
+              </article>
 
-      <section class="section section--links" aria-labelledby="loja-rapida">
-        <h2 id="loja-rapida" class="section__title">Loja</h2>
-        <p class="section__intro">Escolha uma categoria — cada página tem o catálogo completo.</p>
-        <div class="quick-links">
-          <a class="quick-card" href="vip.html">
-            <span class="quick-card__icon" aria-hidden="true">⭐</span>
-            <span class="quick-card__title">VIP &amp; passes</span>
-            <span class="quick-card__desc">Benefícios permanentes e boosts</span>
-          </a>
-          <a class="quick-card" href="carros.html">
-            <span class="quick-card__icon" aria-hidden="true">🚗</span>
-            <span class="quick-card__title">Carros &amp; visuais</span>
-            <span class="quick-card__desc">Veículos e kits de aparência</span>
-          </a>
-          <a class="quick-card" href="pacotes.html">
-            <span class="quick-card__icon" aria-hidden="true">💰</span>
-            <span class="quick-card__title">Pacotes &amp; upgrades</span>
-            <span class="quick-card__desc">Rodas, motor, moedas, XP e combos</span>
-          </a>
-        </div>
-      </section>
+              <article class="product-card product-card--has-media">
+                <span class="product-card__badge product-card__badge--car">Carro</span>
+                <div class="product-card__media">
+                  <img class="product-card__thumb" src="assets/gear-up-logo.png" alt="Starter Pack Piloto" width="400" height="250" loading="lazy" decoding="async" />
+                </div>
+                <h3>Starter Pack Piloto</h3>
+                <div class="product-card__price">R$ 39,90</div>
+                <a class="btn btn--primary js-cart-add" href="#" data-checkout-item="Starter Pack Piloto" data-checkout-price="R$ 39,90" data-checkout-cents="3990" data-checkout-image="assets/gear-up-logo.png">Adicionar</a>
+              </article>
 
-      <section class="section section--featured" aria-labelledby="mais-vendidos">
-        <h2 id="mais-vendidos" class="section__title">Mais vendidos</h2>
-        <p class="section__intro">Três destaques rápidos para o jogador comprar direto da home.</p>
-        <div class="products featured-products">
-          <article class="product-card product-card--has-media">
-            <span class="product-card__badge product-card__badge--gold">VIP</span>
-            <div class="product-card__media">
-              <img class="product-card__thumb" src="assets/vip-gold.png" alt="VIP Gold" width="400" height="250" loading="lazy" decoding="async" />
+              <article class="product-card product-card--has-media">
+                <span class="product-card__badge product-card__badge--combo">Combo</span>
+                <div class="product-card__media">
+                  <img class="product-card__thumb" src="assets/gear-up-logo.png" alt="Combo Turbo Weekend" width="400" height="250" loading="lazy" decoding="async" />
+                </div>
+                <h3>Combo Turbo Weekend</h3>
+                <div class="product-card__price">R$ 24,90</div>
+                <a class="btn btn--primary js-cart-add" href="#" data-checkout-item="Combo Turbo Weekend" data-checkout-price="R$ 24,90" data-checkout-cents="2490" data-checkout-image="assets/gear-up-logo.png">Adicionar</a>
+              </article>
             </div>
-            <h3>VIP Gold — 30 dias</h3>
-            <p class="product-card__desc">Plano mais popular para vantagem contínua em corridas e progressão.</p>
-            <div class="product-card__price">R$ 39,90</div>
-            <a class="btn btn--primary js-cart-add" href="#" data-checkout-item="VIP Gold — 30 dias" data-checkout-price="R$ 39,90" data-checkout-cents="3990" data-checkout-image="assets/vip-gold.png" data-grant-type="vip" data-grant-tier="Gold" data-grant-days="30">Adicionar ao carrinho</a>
-          </article>
+          </aside>
 
-          <article class="product-card product-card--has-media">
-            <span class="product-card__badge product-card__badge--car">Carro</span>
-            <div class="product-card__media">
-              <img class="product-card__thumb" src="assets/gear-up-logo.png" alt="Starter Pack Piloto" width="400" height="250" loading="lazy" decoding="async" />
-            </div>
-            <h3>Starter Pack Piloto</h3>
-            <p class="product-card__desc">Bundle de entrada ideal para quem acabou de começar no Gear UP.</p>
-            <div class="product-card__price">R$ 39,90</div>
-            <a class="btn btn--primary js-cart-add" href="#" data-checkout-item="Starter Pack Piloto" data-checkout-price="R$ 39,90" data-checkout-cents="3990" data-checkout-image="assets/gear-up-logo.png">Adicionar ao carrinho</a>
-          </article>
+          <div class="home-main">
+            <section class="section section--tight" id="jogo">
+              <h2 class="section__title">Por dentro do jogo</h2>
+              <p class="section__intro">
+                Tudo pensado para quem gosta de sensação de velocidade e desafio nas curvas.
+              </p>
+              <ul class="features">
+                <li class="feature">
+                  <span class="feature__icon" aria-hidden="true">🏎️</span>
+                  <h3 class="feature__title">Corridas intensas</h3>
+                  <p>Pistas com ritmo forte e espaço para ultrapassagens e estratégia.</p>
+                </li>
+                <li class="feature">
+                  <span class="feature__icon" aria-hidden="true">🔧</span>
+                  <h3 class="feature__title">Progressão</h3>
+                  <p>Melhore seu desempenho e desbloqueie conteúdos conforme você joga.</p>
+                </li>
+                <li class="feature">
+                  <span class="feature__icon" aria-hidden="true">👥</span>
+                  <h3 class="feature__title">Comunidade</h3>
+                  <p>Dispute com amigos e suba no ranking da comunidade Gear UP.</p>
+                </li>
+              </ul>
+            </section>
 
-          <article class="product-card product-card--has-media">
-            <span class="product-card__badge product-card__badge--combo">Combo</span>
-            <div class="product-card__media">
-              <img class="product-card__thumb" src="assets/gear-up-logo.png" alt="Combo Turbo Weekend" width="400" height="250" loading="lazy" decoding="async" />
-            </div>
-            <h3>Combo Turbo Weekend</h3>
-            <p class="product-card__desc">Pacote com boost para fim de semana e evolução rápida na conta.</p>
-            <div class="product-card__price">R$ 24,90</div>
-            <a class="btn btn--primary js-cart-add" href="#" data-checkout-item="Combo Turbo Weekend" data-checkout-price="R$ 24,90" data-checkout-cents="2490" data-checkout-image="assets/gear-up-logo.png">Adicionar ao carrinho</a>
-          </article>
+            <section class="section section--links" aria-labelledby="loja-rapida">
+              <h2 id="loja-rapida" class="section__title">Loja</h2>
+              <p class="section__intro">Escolha uma categoria — cada página tem o catálogo completo.</p>
+              <div class="quick-links">
+                <a class="quick-card" href="vip.html">
+                  <span class="quick-card__icon" aria-hidden="true">⭐</span>
+                  <span class="quick-card__title">VIP &amp; passes</span>
+                  <span class="quick-card__desc">Benefícios permanentes e boosts</span>
+                </a>
+                <a class="quick-card" href="carros.html">
+                  <span class="quick-card__icon" aria-hidden="true">🚗</span>
+                  <span class="quick-card__title">Carros &amp; visuais</span>
+                  <span class="quick-card__desc">Veículos e kits de aparência</span>
+                </a>
+                <a class="quick-card" href="pacotes.html">
+                  <span class="quick-card__icon" aria-hidden="true">💰</span>
+                  <span class="quick-card__title">Pacotes &amp; upgrades</span>
+                  <span class="quick-card__desc">Rodas, motor, moedas, XP e combos</span>
+                </a>
+              </div>
+            </section>
+          </div>
         </div>
       </section>
     </main>

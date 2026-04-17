@@ -636,6 +636,61 @@ body.checkout-page::before {
   padding-top: 0.5rem;
 }
 
+.section--home-split {
+  padding-top: 0.5rem;
+}
+
+.home-split {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1.5rem 2.5rem;
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
+  gap: 1.15rem;
+  align-items: start;
+}
+
+.home-sidebar {
+  position: sticky;
+  top: 90px;
+}
+
+.home-sidebar .section__title {
+  font-size: clamp(1.6rem, 2.3vw, 2rem);
+}
+
+.home-sidebar .section__intro {
+  margin-bottom: 1rem;
+}
+
+.home-featured-products {
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+}
+
+.home-featured-products .product-card {
+  padding: 0.95rem;
+}
+
+.home-featured-products .product-card__media {
+  aspect-ratio: 16 / 9;
+}
+
+.home-featured-products .product-card h3 {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.home-featured-products .product-card__price {
+  font-size: 1.35rem;
+  margin-bottom: 0.6rem;
+}
+
+.home-main > .section {
+  padding-left: 0;
+  padding-right: 0;
+}
+
 /* VIP — um nicho (bloco) por tier */
 .vip-sections {
   display: flex;
@@ -1295,6 +1350,14 @@ dialog.gear-demo-checkout[open] {
     flex-wrap: wrap;
     justify-content: flex-end;
     row-gap: 0.35rem;
+  }
+
+  .home-split {
+    grid-template-columns: 1fr;
+  }
+
+  .home-sidebar {
+    position: static;
   }
 }
 
