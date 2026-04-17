@@ -463,8 +463,6 @@ function startHttpServer(client) {
     const payBlock = formatStripePaymentShort(s);
     const detalhesPedido = formatCheckoutMetadataFriendly(md);
 
-    const sid = String(s.id || "");
-
     const footerIcon = client.user?.displayAvatarURL?.({ size: 64 });
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)
@@ -479,12 +477,7 @@ function startHttpServer(client) {
           value: `${robloxBlock}\n${discordBlock}`.slice(0, 1024),
           inline: false,
         },
-        { name: "📋 Detalhes do pedido", value: detalhesPedido.slice(0, 1024), inline: false },
-        {
-          name: "🔗 Referência Stripe",
-          value: sid ? `\`${sid}\`` : "—",
-          inline: false,
-        }
+        { name: "📋 Detalhes do pedido", value: detalhesPedido.slice(0, 1024), inline: false }
       )
       .setFooter(
         footerIcon
