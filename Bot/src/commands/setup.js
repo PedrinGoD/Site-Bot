@@ -53,6 +53,20 @@ module.exports = {
         )
     )
     .addSubcommand((sc) =>
+      sc
+        .setName("log_detalhado")
+        .setDescription(
+          "Canal privado (staff/CEO): transação Stripe completa — bloqueie o acesso no Discord"
+        )
+        .addChannelOption((o) =>
+          o
+            .setName("canal")
+            .setDescription("Canal de texto só para a equipa")
+            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+            .setRequired(true)
+        )
+    )
+    .addSubcommand((sc) =>
       sc.setName("ver").setDescription("Mostra o que já foi configurado aqui")
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
@@ -95,6 +109,20 @@ module.exports = {
       return;
     }
 
+    if (sub === "log_detalhado") {
+      const ch = interaction.options.getChannel("canal", true);
+      guildConfig.update(gid, { fullTransactionLogChannelId: ch.id });
+      await interaction.reply({
+        ephemeral: true,
+        content:
+          `✅ Log detalhado (staff): ${ch}.\n` +
+          `**Importante:** no Discord, edita as permissões do canal — só CEO/staff veem mensagens. ` +
+          `O Stripe **não** envia o nome do banco em todos os métodos (cartão costuma ser bandeira + últimos 4 + país). ` +
+          `Opcional no Render: \`FULL_TRANSACTION_LOG_CHANNEL_ID\` (este servidor usa o canal do /setup).`,
+      });
+      return;
+    }
+
     if (sub === "ver") {
       const c = guildConfig.get(gid);
       const embed = new EmbedBuilder()
@@ -117,6 +145,12 @@ module.exports = {
             value: c.nitroLogChannelId
               ? `<#${c.nitroLogChannelId}>`
               : "Não configurado (`/setup nitro`)",
+          },
+          {
+            name: "Log detalhado (staff / Stripe)",
+            value: c.fullTransactionLogChannelId
+              ? `<#${c.fullTransactionLogChannelId}>`
+              : "Não configurado (`/setup log_detalhado`) — opcional",
           }
         );
       await interaction.reply({ ephemeral: true, embeds: [embed] });

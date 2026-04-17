@@ -79,8 +79,31 @@ function startHttpServer(client) {
     return "";
   }
 
+  function getFullStaffLogChannelIdFromEnv() {
+    const keys = [
+      "FULL_TRANSACTION_LOG_CHANNEL_ID",
+      "GEAR_FULL_TRANSACTION_LOG_CHANNEL_ID",
+      "STAFF_SALES_DETAIL_CHANNEL_ID",
+    ];
+    for (const k of keys) {
+      const id = normalizeDiscordChannelId(process.env[k]);
+      if (id) return id;
+    }
+    return "";
+  }
+
+  /** `/setup log_detalhado` no servidor, ou env global (Render). */
+  function resolveFullStaffLogChannelId(guildId) {
+    const fromGuild = guildId
+      ? normalizeDiscordChannelId(guildConfig.get(guildId).fullTransactionLogChannelId)
+      : "";
+    return fromGuild || getFullStaffLogChannelIdFromEnv();
+  }
+
   /** Evita dois avisos no Discord (webhook + página de sucesso) para o mesmo checkout */
   const notifiedStripeSessions = new Set();
+  /** Uma mensagem detalhada (staff) por sessão Stripe */
+  const staffFullLogSent = new Set();
 
   /** @type {import('stripe').Stripe | null} */
   let stripe = null;
@@ -244,6 +267,216 @@ function startHttpServer(client) {
   }
 
   /**
+   * @param {string} robloxUserId
+   * @returns {Promise<{ id: string, name?: string, displayName?: string, error?: string } | null>}
+   */
+  async function fetchRobloxProfilePublic(robloxUserId) {
+    const id = String(robloxUserId || "").replace(/\D/g, "");
+    if (!id) return null;
+    try {
+      const r = await fetch(`https://users.roblox.com/v1/users/${id}`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) return { id, error: `HTTP ${r.status}` };
+      const j = await r.json();
+      return { id, name: j.name, displayName: j.displayName };
+    } catch (e) {
+      return { id, error: String(e.message || e) };
+    }
+  }
+
+  /**
+   * @param {import('stripe').Stripe.Checkout.Session} s
+   */
+  function formatStripePaymentBlock(s) {
+    const lines = [];
+    const pmTypes = s.payment_method_types;
+    if (Array.isArray(pmTypes) && pmTypes.length) {
+      lines.push(`Métodos aceites nesta sessão: **${pmTypes.join(", ")}**`);
+    }
+    const pi = typeof s.payment_intent === "object" && s.payment_intent ? s.payment_intent : null;
+    if (!pi) {
+      lines.push("PaymentIntent: *não disponível na sessão expandida*");
+      return lines.join("\n").slice(0, 1020);
+    }
+    lines.push(`PaymentIntent: \`${pi.id}\``);
+    lines.push(`Status PI: **${pi.status}**`);
+    lines.push(`Moeda PI: ${(pi.currency || "").toUpperCase() || "—"}`);
+    const pm = typeof pi.payment_method === "object" && pi.payment_method ? pi.payment_method : null;
+    if (!pm) {
+      const pmid = typeof pi.payment_method === "string" ? pi.payment_method : "";
+      if (pmid) lines.push(`Payment method ID: \`${pmid}\``);
+      return lines.join("\n").slice(0, 1020);
+    }
+    lines.push(`Tipo PM: **${pm.type}**`);
+    if (pm.card) {
+      const c = pm.card;
+      lines.push(
+        `Cartão: **${(c.brand || "?").toUpperCase()}** ········${c.last4 || "????"} (${c.funding || "funding ?"})`
+      );
+      lines.push(`País (cartão): **${c.country || "—"}**`);
+      if (c.exp_month && c.exp_year) lines.push(`Validade: ${c.exp_month}/${c.exp_year}`);
+      if (c.wallet?.type) lines.push(`Carteira digital: **${c.wallet.type}**`);
+      if (c.iin) lines.push(`IIN (6 primeiros): \`${c.iin}\``);
+    }
+    if (pm.billing_details) {
+      const b = pm.billing_details;
+      const bits = [b.name, b.email, b.phone].filter(Boolean);
+      if (bits.length) lines.push(`Billing (PM): ${bits.join(" · ")}`.slice(0, 300));
+      if (b.address?.country) lines.push(`País (billing PM): **${b.address.country}**`);
+    }
+    if (pm.pix) lines.push(`Pix (Stripe): \`${JSON.stringify(pm.pix).slice(0, 180)}\``);
+    if (pm.boleto) lines.push(`Boleto: \`${JSON.stringify(pm.boleto).slice(0, 180)}\``);
+    if (pm.us_bank_account) {
+      const u = pm.us_bank_account;
+      lines.push(
+        `Conta US: **${u.bank_name || "banco ?"}** · ${u.account_holder_type || ""} · ····${u.last4 || ""}`
+      );
+    }
+    if (pm.sepa_debit) {
+      const se = pm.sepa_debit;
+      lines.push(`SEPA: país **${se.country || "—"}** · banco \`${String(se.bank_code || "").slice(0, 40)}\``);
+    }
+    return lines.join("\n").slice(0, 1020);
+  }
+
+  /**
+   * @param {import('discord.js').Client} client
+   * @param {import('stripe').Stripe.Checkout.Session} session
+   * @param {string} contextLabel
+   */
+  async function trySendStaffFullTransactionLog(client, session, contextLabel) {
+    if (!stripe) return { ok: true, skipped: true };
+    const md = session.metadata || {};
+    const guildId = md.guild_id || md.guildId || defaultGuildId;
+    const channelId = resolveFullStaffLogChannelId(guildId);
+    if (!channelId) return { ok: true, skipped: true };
+    if (staffFullLogSent.has(session.id)) return { ok: true, duplicate: true };
+
+    let s = session;
+    try {
+      s = await stripe.checkout.sessions.retrieve(session.id, {
+        expand: ["line_items", "payment_intent", "payment_intent.payment_method"],
+      });
+    } catch (e) {
+      console.error(`[stripe] staff log retrieve:`, e.message || e);
+    }
+
+    const currency = (s.currency || "usd").toUpperCase();
+    const total =
+      s.amount_total != null ? `${(s.amount_total / 100).toFixed(2)} ${currency}` : "—";
+    const sub =
+      s.amount_subtotal != null ? `${(s.amount_subtotal / 100).toFixed(2)} ${currency}` : "—";
+    const itemName = md.item_name || md.itemName || "—";
+
+    const cust = s.customer_details;
+    const custLines = [];
+    if (cust?.email) custLines.push(`Email: ${cust.email}`);
+    if (cust?.name) custLines.push(`Nome: ${cust.name}`);
+    if (cust?.phone) custLines.push(`Telefone: ${cust.phone}`);
+    if (cust?.tax_ids?.length) {
+      custLines.push(
+        `Tax IDs: ${cust.tax_ids.map((t) => (typeof t === "object" && t?.value ? t.value : String(t))).join(", ")}`
+      );
+    }
+    if (cust?.address?.line1 || cust?.address?.country) {
+      const a = cust.address;
+      custLines.push(
+        `Morada: ${[a.line1, a.line2, a.postal_code, a.city, a.state, a.country].filter(Boolean).join(", ")}`.slice(
+          0,
+          400
+        )
+      );
+    }
+    const custBlock = custLines.length ? custLines.join("\n").slice(0, 900) : "—";
+
+    const li = s.line_items?.data || [];
+    const liText = li.length
+      ? li
+          .map((row, i) => {
+            const desc = row.description || row.price?.nickname || "item";
+            const q = row.quantity ?? 1;
+            const unit = row.amount_subtotal != null ? (row.amount_subtotal / 100).toFixed(2) : "?";
+            return `${i + 1}. ${desc} ×${q} → ${unit} ${currency}`;
+          })
+          .join("\n")
+          .slice(0, 900)
+      : "— (sem line_items expandidos)";
+
+    const rid = md.roblox_user_id || md.robloxUserId;
+    let robloxBlock = "—";
+    if (rid) {
+      const prof = await fetchRobloxProfilePublic(rid);
+      if (prof?.name) {
+        robloxBlock = `**@${prof.name}** (${prof.displayName || prof.name})\n\`${prof.id}\``;
+      } else if (prof) {
+        robloxBlock = `\`${prof.id}\`${prof.error ? ` (${prof.error})` : ""}`;
+      } else {
+        robloxBlock = `\`${String(rid).trim()}\``;
+      }
+    }
+
+    const discordUserId = md.discord_user_id || md.discordUserId;
+    const discordBlock = discordUserId
+      ? `ID \`${discordUserId}\`\n<@${discordUserId}>`
+      : "— *(metadata sem discord_user_id)*";
+
+    const metaLines = Object.keys(md)
+      .sort()
+      .map((k) => `${k}: ${String(md[k]).slice(0, 200)}`);
+    const metaBlock = metaLines.length ? metaLines.join("\n").slice(0, 3500) : "—";
+
+    const payBlock = formatStripePaymentBlock(s);
+
+    const embed1 = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle("Transação — log completo (staff)")
+      .setDescription(`**${String(itemName).slice(0, 200)}**`)
+      .addFields(
+        { name: "Stripe Checkout", value: `\`${s.id}\``, inline: true },
+        { name: "Modo", value: String(s.mode || "—"), inline: true },
+        { name: "Pagamento", value: String(s.payment_status || "—"), inline: true },
+        { name: "Valores", value: `Total: **${total}**\nSubtotal: ${sub}`, inline: false },
+        { name: "Cliente (Checkout)", value: custBlock.slice(0, 1024), inline: false },
+        { name: "Linhas (Stripe)", value: liText || "—", inline: false },
+        { name: "Método / meio (Stripe)", value: payBlock || "—", inline: false },
+        {
+          name: "Roblox",
+          value: robloxBlock.slice(0, 1024),
+          inline: false,
+        },
+        { name: "Discord", value: discordBlock.slice(0, 1024), inline: false }
+      )
+      .setFooter({ text: `${contextLabel} · não partilhar fora da equipa` })
+      .setTimestamp(new Date());
+
+    const metaDesc = (
+      "```\n" +
+      metaBlock.replace(/```/g, "`\u200b``") +
+      "\n```"
+    ).slice(0, 4090);
+    const embed2 = new EmbedBuilder()
+      .setColor(0x2b2d31)
+      .setTitle("Metadata (bruto)")
+      .setDescription(metaDesc);
+
+    try {
+      const ch = await client.channels.fetch(channelId);
+      if (!ch?.isTextBased()) throw new Error("canal log detalhado inválido");
+      await ch.send({
+        embeds: [embed1, embed2],
+        allowedMentions: { parse: [] },
+      });
+      staffFullLogSent.add(session.id);
+      console.log(`[discord] ✓ log detalhado staff — ${session.id}`);
+      return { ok: true };
+    } catch (e) {
+      console.error(`[discord] log detalhado staff:`, e.message || e);
+      return { ok: false, error: String(e.message || e) };
+    }
+  }
+
+  /**
    * @param {import('discord.js').Client} client
    * @param {import('stripe').Stripe.Checkout.Session} session
    * @param {string} contextLabel
@@ -256,15 +489,18 @@ function startHttpServer(client) {
       return { ok: false, reason: "not_paid", payment_status: session.payment_status };
     }
 
-    if (notifiedStripeSessions.has(session.id)) {
-      console.log(`[stripe] ${contextLabel}: sessão ${session.id} já notificada — ignorando duplicado`);
+    const md = session.metadata || {};
+    const guildId = md.guild_id || md.guildId || defaultGuildId;
+    const hasStaffChannel = Boolean(resolveFullStaffLogChannelId(guildId));
+    const doneShort = notifiedStripeSessions.has(session.id);
+    const doneStaff = !hasStaffChannel || staffFullLogSent.has(session.id);
+    if (doneShort && doneStaff) {
+      console.log(`[stripe] ${contextLabel}: sessão ${session.id} já processada (Discord) — duplicado`);
       return { ok: true, duplicate: true };
     }
 
-    const md = session.metadata || {};
     const discordUserId = md.discord_user_id || md.discordUserId;
     const itemName = md.item_name || md.itemName || "Item";
-    const guildId = md.guild_id || md.guildId || defaultGuildId;
 
     /** Entrega no jogo não depende do Discord; idempotente por stripeSessionId em robloxGrants. */
     try {
@@ -273,9 +509,21 @@ function startHttpServer(client) {
       console.error(`[roblox] fila pós-pagamento:`, qe.message || qe);
     }
 
+    if (!doneStaff) {
+      try {
+        await trySendStaffFullTransactionLog(client, session, contextLabel);
+      } catch (e) {
+        console.error(`[discord] staff log inesperado:`, e.message || e);
+      }
+    }
+
     if (!discordUserId) {
       console.warn(`[stripe] ${contextLabel}: metadata sem discord_user_id`);
       return { ok: false, reason: "no_discord_in_metadata" };
+    }
+
+    if (doneShort) {
+      return { ok: true, duplicatePartial: true, reason: "short_already_sent" };
     }
 
     const img = md.item_image_url || md.itemImageUrl;
@@ -1119,6 +1367,7 @@ function startHttpServer(client) {
       discordOAuth: Boolean(discordClientSecret && discordClientId),
       robloxGrantsApi: Boolean(robloxApiSecret),
       salesLogChannelFromEnv: Boolean(getSalesLogChannelIdFromEnv()),
+      fullStaffLogChannelFromEnv: Boolean(getFullStaffLogChannelIdFromEnv()),
     });
   });
 
@@ -1130,6 +1379,10 @@ function startHttpServer(client) {
       console.warn(
         "[discord] SALES_LOG_CHANNEL_ID vazio — vendas Stripe não têm canal. No Render: Environment (o .env local não sobe no deploy)."
       );
+    }
+    const fullStaffCh = getFullStaffLogChannelIdFromEnv();
+    if (fullStaffCh) {
+      console.log(`[discord] FULL_TRANSACTION_LOG_CHANNEL_ID ativo (termina …${fullStaffCh.slice(-4)})`);
     }
     console.log(`HTTP webhook em http://0.0.0.0:${port}  (GET /health  |  POST /webhooks/venda)`);
     if (demoSaleKey) {

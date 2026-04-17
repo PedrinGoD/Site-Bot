@@ -14,7 +14,7 @@ function ensureFile() {
 }
 
 /**
- * @returns {Record<string, { ticketCategoryId?: string, staffRoleId?: string, salesLogChannelId?: string, nitroLogChannelId?: string }>}
+ * @returns {Record<string, { ticketCategoryId?: string, staffRoleId?: string, salesLogChannelId?: string, nitroLogChannelId?: string, fullTransactionLogChannelId?: string }>}
  */
 function loadAll() {
   ensureFile();
