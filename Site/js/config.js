@@ -1,9 +1,8 @@
 /** Cole aqui o link direto da experiência Roblox */
 window.ROBLOX_PLACE_URL = "https://www.roblox.com/pt/games/140001935550545/Gear-Up";
 
-/** Versão mostrada no rodapé + convite/link do Discord de suporte (opcional). */
+/** Convite/link do Discord de suporte no rodapé (opcional). */
 window.GEAR_SITE = {
-  version: "1.3.0",
   /** Ex.: "https://discord.gg/SEU_CONVITE" — deixa vazio para esconder o link no rodapé. */
   supportDiscordUrl: "https://discord.gg/WneV4yv8dX",
 };

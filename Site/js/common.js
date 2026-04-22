@@ -236,35 +236,27 @@ function initCommon() {
     const footer = document.querySelector(".site-footer");
     if (!footer || footer.querySelector("[data-gear-footer-meta]")) return;
     const cfg = typeof window.GEAR_SITE === "object" && window.GEAR_SITE !== null ? window.GEAR_SITE : {};
-    const version = cfg.version != null && String(cfg.version).trim() !== "" ? String(cfg.version).trim() : "—";
     const discord = String(cfg.supportDiscordUrl || "").trim();
 
     const p = document.createElement("p");
     p.className = "footer__meta";
     p.setAttribute("data-gear-footer-meta", "1");
 
-    const s1 = document.createElement("span");
-    s1.appendChild(document.createTextNode("Site "));
-    const strong = document.createElement("strong");
-    strong.textContent = version;
-    s1.appendChild(strong);
-    s1.appendChild(document.createTextNode(" · "));
     const aHelp = document.createElement("a");
     aHelp.href = "ajuda-entrega.html";
     aHelp.textContent = "Não recebi no jogo";
-    s1.appendChild(aHelp);
+    p.appendChild(aHelp);
 
     if (discord && /^https?:\/\//i.test(discord)) {
-      s1.appendChild(document.createTextNode(" · "));
+      p.appendChild(document.createTextNode(" · "));
       const aDisc = document.createElement("a");
       aDisc.href = discord;
       aDisc.textContent = "Suporte Discord";
       aDisc.target = "_blank";
       aDisc.rel = "noopener noreferrer";
-      s1.appendChild(aDisc);
+      p.appendChild(aDisc);
     }
 
-    p.appendChild(s1);
     footer.appendChild(p);
   }
 
