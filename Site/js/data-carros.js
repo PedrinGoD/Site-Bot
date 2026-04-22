@@ -102,7 +102,7 @@ window.GEAR_SHOP_ITEMS = [
     href: "#",
     image: "assets/carros/corvete.png",
     imageAlt: "corvete",
-    stripeAmountCents: 8990,
+    stripeAmountCents: 6990,
     grantType: "vehicle",
     grantVehicleId: "Corvette_z06",
     grantDays: 0,
