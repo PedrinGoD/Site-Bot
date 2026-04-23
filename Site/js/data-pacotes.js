@@ -12,7 +12,7 @@ window.GEAR_PACKAGE_SECTIONS = [
   {
     id: "moedas",
     title: "Moedas do jogo",
-    lead: "Créditos na conta — entrega automática no jogo após o pagamento (mesmo Dinheiro da garagem).",
+    lead: "Créditos na sua conta — entrega automática no jogo após o pagamento.",
     items: [
       {
         badge: "Moedas",
@@ -31,7 +31,6 @@ window.GEAR_PACKAGE_SECTIONS = [
         title: "Bolsa M — 10.000",
         desc: "Equilíbrio entre preço e quantidade — bom como pacote mais vendido.",
         price: "R$ 14,90",
-        note: "Destaque na loja se quiser",
         href: "#",
         stripeAmountCents: 1490,
         grantType: "currency",
@@ -63,7 +62,7 @@ window.GEAR_PACKAGE_SECTIONS = [
         badge: "Moedas",
         badgeVariant: "money",
         title: "Cofre Mega — 300.000",
-        desc: "Tier máximo de moeda — use em eventos ou ofertas.",
+        desc: "Pacote máximo de moedas — para grandes compras no jogo.",
         price: "R$ 249,90",
         href: "#",
         stripeAmountCents: 24990,
@@ -75,7 +74,7 @@ window.GEAR_PACKAGE_SECTIONS = [
   {
     id: "xp",
     title: "XP",
-    lead: "Experiência permanente na conta — sobe o nível como no jogo (curva igual ao GerenciadorDeDadosMaster).",
+    lead: "Experiência permanente na conta — a mesma progressão que você ganha jogando.",
     items: [
       {
         badge: "XP",

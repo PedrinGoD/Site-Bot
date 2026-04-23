@@ -14,7 +14,6 @@ window.GEAR_VIP_SECTIONS = [
         title: "1 dia",
         desc: "Máximo de benefícios: bônus, tag, fila prioritária e cosméticos do tier Diamante — válido por 24 horas.",
         price: "R$ 7,90",
-        note: "Link Roblox / checkout",
         href: "#",
       },
       {

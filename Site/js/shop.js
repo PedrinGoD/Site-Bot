@@ -88,7 +88,7 @@
         <span class="product-card__vip-trigger-text">
           <span class="product-card__vip-title">${escapeHtml(p.title)}</span>
           <span class="product-card__price product-card__price--vip">${escapeHtml(p.price)}</span>
-          <span class="product-card__vip-hint">Clique para ver a descrição</span>
+          <span class="product-card__vip-hint">Ver detalhes</span>
         </span>
       </button>
       <div class="product-card__actions product-card__actions--vip">

@@ -178,7 +178,7 @@
     if (!stripeCfg || !stripeCfg.enabled) {
       if (errEl) {
         errEl.hidden = false;
-        errEl.textContent = "Checkout Stripe está desativado em js/config.js.";
+        errEl.textContent = "O pagamento por cartão está indisponível no momento. Tente mais tarde ou fale com o suporte.";
       }
       return;
     }
