@@ -1312,13 +1312,9 @@ function startHttpServer(client) {
       const payPref = String(req.body.paymentMethod || req.body.payment_method || "both")
         .trim()
         .toLowerCase();
-      let paymentMethodTypes = ["card", "pix"];
-      if (payPref === "pix") paymentMethodTypes = ["pix"];
-      else if (payPref === "card") paymentMethodTypes = ["card"];
-
-      const session = await stripe.checkout.sessions.create({
+      /** Cartão explícito; Pix usa métodos ativos no Dashboard (evita erro se Pix ainda não estiver ligado). */
+      const sessionParams = {
         mode: "payment",
-        payment_method_types: paymentMethodTypes,
         line_items: items.map((it) => ({
           price_data: {
             currency: "brl",
@@ -1333,7 +1329,27 @@ function startHttpServer(client) {
         // URL sem ".html" evita redirect 301 do servidor estático que costuma perder ?session_id=...
         success_url: `${siteBaseUrl}/pagamento-ok?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${siteBaseUrl}/pagamento-cancelado`,
-      });
+      };
+      if (payPref === "card") {
+        sessionParams.payment_method_types = ["card"];
+      } else {
+        sessionParams.automatic_payment_methods = { enabled: true };
+      }
+
+      let session;
+      try {
+        session = await stripe.checkout.sessions.create(sessionParams);
+      } catch (e) {
+        const msg = String(e.message || e);
+        if (payPref === "pix" && /pix/i.test(msg) && /invalid/i.test(msg)) {
+          console.warn("[stripe] Pix indisponível na conta — Checkout só com cartão:", msg);
+          delete sessionParams.automatic_payment_methods;
+          sessionParams.payment_method_types = ["card"];
+          session = await stripe.checkout.sessions.create(sessionParams);
+        } else {
+          throw e;
+        }
+      }
 
       return res.json({ ok: true, url: session.url, sessionId: session.id });
     } catch (e) {
