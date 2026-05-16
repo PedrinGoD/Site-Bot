@@ -13,17 +13,52 @@
     return String(q.get("charge") || "").trim();
   }
 
+  function isPixCopyPaste(str) {
+    return /^000201/i.test(String(str || "").trim());
+  }
+
+  function renderPixQrImage(img, pixCode) {
+    if (!img || !pixCode || typeof QRCode === "undefined") return;
+    QRCode.toDataURL(String(pixCode), {
+      width: 280,
+      margin: 1,
+      errorCorrectionLevel: "M",
+    })
+      .then(function (url) {
+        img.src = url;
+        img.alt = "QR Code Pix";
+        img.hidden = false;
+      })
+      .catch(function () {
+        img.removeAttribute("src");
+        img.hidden = true;
+      });
+  }
+
   function showQr(data) {
     const img = document.getElementById("pix-qr-img");
     const ta = document.getElementById("pix-copy-code");
     const copyBtn = document.getElementById("pix-copy-btn");
     const linkBtn = document.getElementById("pix-open-link");
-    const b64 = data.qrCodeBase64 || "";
-    const code = data.qrCode || "";
+    let b64 = String(data.qrCodeBase64 || "").trim();
+    let code = String(data.qrCode || "").trim();
     const checkoutLink = data.checkoutLink || "";
-    if (img && b64) {
-      img.src = b64.startsWith("data:") ? b64 : "data:image/png;base64," + b64;
-      img.hidden = false;
+
+    if (isPixCopyPaste(b64) && !code) {
+      code = b64;
+      b64 = "";
+    }
+
+    if (img) {
+      if (b64 && !isPixCopyPaste(b64)) {
+        img.src = b64.startsWith("data:") ? b64 : "data:image/png;base64," + b64;
+        img.hidden = false;
+      } else if (code) {
+        renderPixQrImage(img, code);
+      } else {
+        img.removeAttribute("src");
+        img.hidden = true;
+      }
     }
     if (ta && code) {
       ta.value = code;
