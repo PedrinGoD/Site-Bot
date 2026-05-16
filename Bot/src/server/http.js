@@ -107,6 +107,8 @@ function startHttpServer(client) {
   const notifiedStripeSessions = new Set();
   /** Uma mensagem detalhada (staff) por sessão Stripe */
   const staffFullLogSent = new Set();
+  /** Uma mensagem detalhada (staff) por pedido externo (ex.: Pix PicPay) */
+  const externalStaffLogSent = new Set();
 
   /** @type {import('stripe').Stripe | null} */
   let stripe = null;
@@ -409,6 +411,95 @@ function startHttpServer(client) {
   }
 
   /**
+   * Log detalhado para meios externos ao Checkout Stripe (ex.: Pix PicPay),
+   * mantendo o mesmo padrão do canal de staff.
+   * @param {import('discord.js').Client} client
+   * @param {object} payload
+   * @param {string} payload.gateway
+   * @param {string} payload.orderId
+   * @param {number} [payload.amountCents]
+   * @param {string} [payload.currency]
+   * @param {string} [payload.paymentMethodLabel]
+   * @param {string} [payload.guildId]
+   * @param {string} [payload.discordUserId]
+   * @param {string} [payload.itemName]
+   * @param {Record<string, string>} [payload.metadata]
+   * @param {string} [contextLabel]
+   */
+  async function trySendStaffExternalTransactionLog(client, payload, contextLabel = "external") {
+    const md = payload.metadata || {};
+    const guildId = payload.guildId || md.guild_id || md.guildId || defaultGuildId;
+    const channelId = resolveFullStaffLogChannelId(guildId);
+    if (!channelId) return { ok: true, skipped: true };
+
+    const gateway = String(payload.gateway || "external").trim().toLowerCase();
+    const orderId = String(payload.orderId || "").trim();
+    if (!orderId) return { ok: false, reason: "missing_order_id" };
+    const dedupeKey = `${gateway}:${orderId}`;
+    if (externalStaffLogSent.has(dedupeKey)) return { ok: true, duplicate: true };
+
+    const currency = String(payload.currency || "BRL").toUpperCase();
+    const amountCents = Number(payload.amountCents || 0);
+    const total = amountCents > 0 ? `${(amountCents / 100).toFixed(2)} ${currency}` : "—";
+    const itemName = String(payload.itemName || md.item_name || "Item").slice(0, 250);
+    const paymentLine = String(payload.paymentMethodLabel || gateway).slice(0, 120);
+
+    const rid = md.roblox_user_id || md.robloxUserId;
+    let robloxBlock = "—";
+    if (rid) {
+      const prof = await fetchRobloxProfilePublic(rid);
+      if (prof?.name) {
+        robloxBlock = `**@${prof.name}** (${prof.displayName || prof.name})\n\`${prof.id}\``;
+      } else if (prof) {
+        robloxBlock = `\`${prof.id}\`${prof.error ? ` (${prof.error})` : ""}`;
+      } else {
+        robloxBlock = `\`${String(rid).trim()}\``;
+      }
+    }
+
+    const discordUserId = payload.discordUserId || md.discord_user_id || md.discordUserId;
+    const discordBlock = discordUserId ? `<@${discordUserId}> · \`${discordUserId}\`` : "—";
+    const detalhesPedido = formatCheckoutMetadataFriendly(md);
+
+    const footerIcon = client.user?.displayAvatarURL?.({ size: 64 });
+    const embed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle("🧾 Compra confirmada · staff")
+      .setDescription(`🛒 **${itemName}**`)
+      .addFields(
+        { name: "💰 Valor", value: `**${total}**`.slice(0, 256), inline: false },
+        { name: "💳 Pagamento", value: paymentLine.slice(0, 1024), inline: false },
+        {
+          name: "🎮 Roblox · 💬 Discord",
+          value: `${robloxBlock}\n${discordBlock}`.slice(0, 1024),
+          inline: false,
+        },
+        { name: "📋 Detalhes do pedido", value: detalhesPedido.slice(0, 1024), inline: false }
+      )
+      .setFooter(
+        footerIcon
+          ? { text: "🔒 Uso interno — equipa Gear UP", iconURL: footerIcon }
+          : { text: "🔒 Uso interno — equipa Gear UP" }
+      )
+      .setTimestamp(new Date());
+
+    try {
+      const ch = await client.channels.fetch(channelId);
+      if (!ch?.isTextBased()) throw new Error("canal log detalhado inválido");
+      await ch.send({
+        embeds: [embed],
+        allowedMentions: { parse: [] },
+      });
+      externalStaffLogSent.add(dedupeKey);
+      console.log(`[discord] ✓ log detalhado staff (${contextLabel}) — ${dedupeKey}`);
+      return { ok: true };
+    } catch (e) {
+      console.error(`[discord] log detalhado staff (${gateway}):`, e.message || e);
+      return { ok: false, error: String(e.message || e) };
+    }
+  }
+
+  /**
    * @param {import('discord.js').Client} client
    * @param {import('stripe').Stripe.Checkout.Session} session
    * @param {string} contextLabel
@@ -640,6 +731,7 @@ function startHttpServer(client) {
     robloxGrants,
     maybeQueueRobloxGrant,
     deliverSaleToDiscord,
+    trySendStaffExternalTransactionLog,
     parseCheckoutOrder: (req) => parseCheckoutOrder(req, checkoutParseDeps),
   });
 

@@ -20,6 +20,7 @@ function registerPicPayRoutes(app, ctx) {
     robloxGrants,
     maybeQueueRobloxGrant,
     deliverSaleToDiscord,
+    trySendStaffExternalTransactionLog,
   } = ctx;
 
   const notifiedPicPay = new Set();
@@ -129,6 +130,29 @@ function registerPicPayRoutes(app, ctx) {
     const img = md.item_image_url || md.itemImageUrl;
     const itemImageUrl =
       img && String(img).trim() && /^https?:\/\//i.test(String(img).trim()) ? String(img).trim() : undefined;
+    const pendingRow = picpayPending.getPending(merchantChargeId);
+
+    if (typeof trySendStaffExternalTransactionLog === "function") {
+      try {
+        await trySendStaffExternalTransactionLog(
+          client,
+          {
+            gateway: "picpay",
+            paymentMethodLabel: "Pix PicPay",
+            orderId: merchantChargeId,
+            amountCents: pendingRow?.amountCents || 0,
+            currency: "BRL",
+            guildId,
+            discordUserId,
+            itemName,
+            metadata: md,
+          },
+          `picpay:${contextLabel}`
+        );
+      } catch (e) {
+        console.error(`[picpay] staff log (${contextLabel}):`, e.message || e);
+      }
+    }
 
     if (discordUserId) {
       try {
