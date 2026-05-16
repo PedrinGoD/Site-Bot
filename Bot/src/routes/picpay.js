@@ -1,6 +1,8 @@
 const crypto = require("crypto");
+const QRCode = require("qrcode");
 const picpayCheckout = require("../lib/picpayCheckout");
 const picpayPending = require("../lib/picpayPending");
+const { pixCodeToDataUrl } = require("../lib/pixQrImage");
 
 /**
  * @param {import('express').Express} app
@@ -22,6 +24,39 @@ function registerPicPayRoutes(app, ctx) {
 
   const notifiedPicPay = new Set();
   const picpayWebhookToken = (process.env.PICPAY_WEBHOOK_TOKEN || "").trim();
+
+  async function buildPixClientFields(pix, charge) {
+    const qrCode = String(pix?.qrCode || charge?.qrCode || "").trim();
+    let qrCodeBase64 = String(pix?.qrCodeBase64 || charge?.qrCodeBase64 || "").trim();
+    if (qrCode && !qrCodeBase64) {
+      qrCodeBase64 = await pixCodeToDataUrl(qrCode);
+    }
+    return {
+      qrCode,
+      qrCodeBase64,
+      checkoutLink: pix?.checkoutLink || charge?.checkoutLink || "",
+    };
+  }
+
+  /** GET /picpay/qr-image?text=000201... — PNG do QR (fallback para o site) */
+  app.get("/picpay/qr-image", async (req, res) => {
+    const text = String(req.query.text || "").trim();
+    if (!text || !/^000201/i.test(text)) {
+      return res.status(400).send("invalid pix code");
+    }
+    try {
+      const buf = await QRCode.toBuffer(text, {
+        width: 280,
+        margin: 1,
+        errorCorrectionLevel: "M",
+      });
+      res.set("Cache-Control", "private, max-age=3600");
+      res.type("png").send(buf);
+    } catch (e) {
+      console.error("[picpay] qr-image:", e.message || e);
+      return res.status(500).send("qr error");
+    }
+  });
 
   function clientIp(req) {
     const xf = req.headers["x-forwarded-for"];
@@ -164,14 +199,13 @@ function registerPicPayRoutes(app, ctx) {
         paymentLinkId: paymentLinkId || undefined,
       });
       const pix = picpayCheckout.extractPixFromCharge(charge);
+      const pixFields = await buildPixClientFields(pix, charge);
       return res.json({
         ok: true,
         merchantChargeId,
         amountCents,
         chargeStatus: charge.chargeStatus,
-        qrCode: pix?.qrCode || "",
-        qrCodeBase64: pix?.qrCodeBase64 || "",
-        checkoutLink: pix?.checkoutLink || charge.checkoutLink || "",
+        ...pixFields,
         redirectUrl: `${ctx.siteBaseUrl}/pagamento-pix.html?charge=${encodeURIComponent(merchantChargeId)}`,
       });
     } catch (e) {
@@ -197,6 +231,7 @@ function registerPicPayRoutes(app, ctx) {
       );
       const pix = picpayCheckout.extractPixFromCharge(charge);
       const paid = picpayCheckout.isChargePaid(charge);
+      const pixFields = await buildPixClientFields(pix, charge);
 
       if (paid && pending?.metadata) {
         await tryFulfillPicPayCharge(merchantChargeId, pending.metadata, "poll");
@@ -208,9 +243,7 @@ function registerPicPayRoutes(app, ctx) {
         chargeStatus: charge.chargeStatus,
         paid,
         amountCents: charge.amount ?? pending?.amountCents,
-        qrCode: pix?.qrCode || "",
-        qrCodeBase64: pix?.qrCodeBase64 || "",
-        checkoutLink: pix?.checkoutLink || charge.checkoutLink || "",
+        ...pixFields,
         itemName: pending?.metadata?.item_name || "",
       });
     } catch (e) {
