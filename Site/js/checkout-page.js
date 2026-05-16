@@ -73,11 +73,29 @@
     return totalsFor(selectedPaymentMethod);
   }
 
+  function updatePaymentOptionLabels() {
+    const cardBtn = document.querySelector('.checkout-pay-option[data-pay="card"]');
+    const pixBtn = document.querySelector('.checkout-pay-option[data-pay="pix"]');
+    if (cardBtn) {
+      cardBtn.textContent = "💳 Cartão de crédito";
+    }
+    if (!pixBtn) return;
+    const cardTotals = totalsFor("card");
+    const pixTotals = totalsFor("pix");
+    const pixDiscount = Math.max(0, cardTotals.total - pixTotals.total);
+    pixBtn.classList.toggle("is-pix-discount", pixDiscount > 0);
+    pixBtn.textContent =
+      pixDiscount > 0
+        ? `🧾 Pix (com desconto • economize ${moneyBr(pixDiscount)})`
+        : "🧾 Pix (com desconto)";
+  }
+
   function render() {
     const list = document.getElementById("checkout-cart-list");
     const total = document.getElementById("checkout-total");
     const couponStatus = document.getElementById("checkout-coupon-status");
     const t = totals();
+    updatePaymentOptionLabels();
     if (list) {
       if (!cartItems.length) {
         list.innerHTML = '<p class="checkout-note">Seu carrinho está vazio. Volte à loja para adicionar itens.</p>';

@@ -1733,6 +1733,18 @@ dialog.gear-demo-checkout[open] {
   box-shadow: 0 0 0 1px rgba(126, 200, 227, 0.25);
 }
 
+.checkout-pay-option[data-pay="pix"].is-pix-discount {
+  border-color: rgba(87, 242, 135, 0.75);
+  background: linear-gradient(180deg, rgba(87, 242, 135, 0.16), rgba(21, 28, 33, 0.95));
+  color: #dfffe9;
+  box-shadow: 0 0 0 1px rgba(87, 242, 135, 0.28);
+}
+
+.checkout-pay-option[data-pay="pix"].is-pix-discount.is-active {
+  border-color: rgba(87, 242, 135, 0.95);
+  box-shadow: 0 0 0 2px rgba(87, 242, 135, 0.35);
+}
+
 .checkout-pay-option:hover:not(:disabled) {
   border-color: rgba(255, 255, 255, 0.22);
   transform: translateY(-1px);
