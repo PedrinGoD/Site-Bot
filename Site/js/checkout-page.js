@@ -285,8 +285,6 @@
         grantXpAmount: parseInt(it.grantXpAmount, 10) || 0,
       })),
       couponCode: couponCode || undefined,
-      discountPercent: t.pct || undefined,
-      discountCents: t.discount || undefined,
       paymentMethod: selectedPaymentMethod,
     };
     if (robloxConfirmedUserId) payload.robloxUserId = robloxConfirmedUserId;

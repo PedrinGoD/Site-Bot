@@ -1,4 +1,5 @@
 const robloxGrants = require("./robloxGrants");
+const { resolveCouponDiscount } = require("./serverCoupons");
 
 /**
  * Valida body do checkout (Stripe/PicPay) e monta metadata + total em centavos.
@@ -147,14 +148,11 @@ function parseCheckoutOrder(req, deps) {
     const qty = Math.max(1, parseInt(it.quantity, 10) || 1);
     return acc + qty * Math.max(50, parseInt(it.amountCents, 10) || 100);
   }, 0);
-  const discountPercent = parseInt(req.body.discountPercent, 10);
-  const discountCentsBody = parseInt(req.body.discountCents, 10);
-  let discount = 0;
-  if (!Number.isNaN(discountPercent) && discountPercent > 0) {
-    discount = Math.floor((subtotal * Math.min(90, discountPercent)) / 100);
-  } else if (!Number.isNaN(discountCentsBody) && discountCentsBody > 0) {
-    discount = Math.min(subtotal, discountCentsBody);
+  const couponApply = resolveCouponDiscount(req.body.couponCode, subtotal);
+  if (couponApply.error) {
+    return { error: couponApply.error, status: couponApply.status || 400 };
   }
+  const discount = Math.max(0, couponApply.discountCents || 0);
   const totalCents = Math.max(50, subtotal - discount);
 
   const summaryItemName =
@@ -231,10 +229,9 @@ function parseCheckoutOrder(req, deps) {
     }
   }
 
-  const couponCode = String(req.body.couponCode || "").trim().toUpperCase();
-  if (couponCode) meta.coupon_code = couponCode.slice(0, 50);
-  if (!Number.isNaN(discountPercent) && discountPercent > 0) {
-    meta.discount_percent = String(Math.min(90, discountPercent));
+  if (couponApply.couponCode) meta.coupon_code = couponApply.couponCode;
+  if (couponApply.discountPercent > 0) {
+    meta.discount_percent = String(Math.min(90, couponApply.discountPercent));
   }
   if (discount > 0) meta.discount_cents = String(discount);
 

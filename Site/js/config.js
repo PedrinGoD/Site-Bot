@@ -66,6 +66,9 @@ window.GEAR_CHECKOUT_DEMO = {
 
 /**
  * Cupons de desconto no frontend (percentual).
+ * IMPORTANTE: é apenas visual/prévia no checkout.
+ * A validação real e o desconto final agora são feitos no backend
+ * via env GEAR_SERVER_COUPONS_JSON.
  * Ex.: { "GEAR10": 10, "VIP20": 20 }
  */
 window.GEAR_COUPONS = {GEAR10: 10,
