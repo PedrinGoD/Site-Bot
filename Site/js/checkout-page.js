@@ -4,6 +4,8 @@
   let cartItems = [];
   let robloxConfirmedUserId = null;
   let couponCode = "";
+  /** @type {"card"|"pix"} */
+  let selectedPaymentMethod = "card";
 
   function getStripeCfg() {
     return typeof window.GEAR_STRIPE === "object" && window.GEAR_STRIPE !== null ? window.GEAR_STRIPE : null;
@@ -178,7 +180,7 @@
     if (!stripeCfg || !stripeCfg.enabled) {
       if (errEl) {
         errEl.hidden = false;
-        errEl.textContent = "O pagamento por cartão está indisponível no momento. Tente mais tarde ou fale com o suporte.";
+        errEl.textContent = "O pagamento está indisponível no momento. Tente mais tarde ou fale com o suporte.";
       }
       return;
     }
@@ -226,6 +228,7 @@
       couponCode: couponCode || undefined,
       discountPercent: t.pct || undefined,
       discountCents: t.discount || undefined,
+      paymentMethod: selectedPaymentMethod,
     };
     if (robloxConfirmedUserId) payload.robloxUserId = robloxConfirmedUserId;
     try {
@@ -293,7 +296,21 @@
     });
   }
 
+  function wirePaymentMethodOptions() {
+    document.querySelectorAll(".checkout-pay-option[data-pay]").forEach((btn) => {
+      btn.addEventListener("click", function () {
+        const pay = String(this.getAttribute("data-pay") || "").trim().toLowerCase();
+        if (pay !== "card" && pay !== "pix") return;
+        selectedPaymentMethod = pay;
+        document.querySelectorAll(".checkout-pay-option[data-pay]").forEach((b) => {
+          b.classList.toggle("is-active", b === btn);
+        });
+      });
+    });
+  }
+
   function wireUi() {
+    wirePaymentMethodOptions();
     const dBtn = document.getElementById("checkout-discord-login");
     if (dBtn) {
       dBtn.addEventListener("click", function () {

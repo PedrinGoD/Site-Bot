@@ -1309,9 +1309,16 @@ function startHttpServer(client) {
         meta.discount_cents = String(Math.min(99999999, discountCents));
       }
 
+      const payPref = String(req.body.paymentMethod || req.body.payment_method || "both")
+        .trim()
+        .toLowerCase();
+      let paymentMethodTypes = ["card", "pix"];
+      if (payPref === "pix") paymentMethodTypes = ["pix"];
+      else if (payPref === "card") paymentMethodTypes = ["card"];
+
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
-        payment_method_types: ["card"],
+        payment_method_types: paymentMethodTypes,
         line_items: items.map((it) => ({
           price_data: {
             currency: "brl",
