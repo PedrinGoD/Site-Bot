@@ -1312,9 +1312,12 @@ function startHttpServer(client) {
       const payPref = String(req.body.paymentMethod || req.body.payment_method || "both")
         .trim()
         .toLowerCase();
-      /** Cartão explícito; Pix usa métodos ativos no Dashboard (evita erro se Pix ainda não estiver ligado). */
+      /** Pix: cartão + Pix no Checkout (cliente escolhe na página Stripe). Só cartão se pedir explicitamente. */
+      let paymentMethodTypes = payPref === "card" ? ["card"] : ["card", "pix"];
+
       const sessionParams = {
         mode: "payment",
+        payment_method_types: paymentMethodTypes,
         line_items: items.map((it) => ({
           price_data: {
             currency: "brl",
@@ -1330,20 +1333,19 @@ function startHttpServer(client) {
         success_url: `${siteBaseUrl}/pagamento-ok?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${siteBaseUrl}/pagamento-cancelado`,
       };
-      if (payPref === "card") {
-        sessionParams.payment_method_types = ["card"];
-      } else {
-        sessionParams.automatic_payment_methods = { enabled: true };
-      }
 
       let session;
+      let pixUnavailable = false;
       try {
         session = await stripe.checkout.sessions.create(sessionParams);
       } catch (e) {
         const msg = String(e.message || e);
-        if (payPref === "pix" && /pix/i.test(msg) && /invalid/i.test(msg)) {
+        const pixRejected =
+          paymentMethodTypes.includes("pix") &&
+          (/pix/i.test(msg) && /invalid/i.test(msg));
+        if (pixRejected) {
           console.warn("[stripe] Pix indisponível na conta — Checkout só com cartão:", msg);
-          delete sessionParams.automatic_payment_methods;
+          pixUnavailable = true;
           sessionParams.payment_method_types = ["card"];
           session = await stripe.checkout.sessions.create(sessionParams);
         } else {
@@ -1351,7 +1353,12 @@ function startHttpServer(client) {
         }
       }
 
-      return res.json({ ok: true, url: session.url, sessionId: session.id });
+      return res.json({
+        ok: true,
+        url: session.url,
+        sessionId: session.id,
+        ...(pixUnavailable ? { pixUnavailable: true } : {}),
+      });
     } catch (e) {
       console.error("[stripe] create session:", e);
       return res.status(500).json({ ok: false, error: String(e.message || e) });
