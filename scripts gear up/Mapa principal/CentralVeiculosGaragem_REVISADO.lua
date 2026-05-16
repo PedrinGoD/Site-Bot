@@ -222,11 +222,143 @@ local function chaveBackupOEMGaragem(player, carroSave, nomePos)
 	return string.format("U%d_%s_%s", player.UserId, nomeSeguro, nomePos)
 end
 
+local function obterTemplateOEMEmServerStorageGaragem(player, carroSave, nomePos)
+	if not player or not carroSave then
+		return nil
+	end
+	local root = ServerStorage:FindFirstChild(OEM_FOLDER_SERVER)
+	if not root then
+		return nil
+	end
+	local m = root:FindFirstChild(chaveBackupOEMGaragem(player, carroSave, nomePos))
+	if m and m:IsA("Model") then
+		return m
+	end
+	return nil
+end
+
 local function parteForaDoModeloRodaGaragem(part, raizModelo)
 	if not part or typeof(part) ~= "Instance" or not part:IsA("BasePart") then
 		return true
 	end
 	return not part:IsDescendantOf(raizModelo)
+end
+
+local function diametroEstimadoPelaSizeGaragem(v)
+	local a = { v.X, v.Y, v.Z }
+	table.sort(a, function(x, y)
+		return x > y
+	end)
+	return (a[1] + a[2]) * 0.5
+end
+
+local function fatorEscalaPelaPartGaragem(rodaPart, modeloOrigem)
+	if not rodaPart or not modeloOrigem then
+		return nil
+	end
+	if not rodaPart:IsA("BasePart") or not modeloOrigem:IsA("Model") then
+		return nil
+	end
+	local diametroAlvo = diametroEstimadoPelaSizeGaragem(rodaPart.Size)
+	local diametroOrigem = diametroEstimadoPelaSizeGaragem(modeloOrigem:GetExtentsSize())
+	if diametroAlvo <= 1e-4 or diametroOrigem <= 1e-4 then
+		return nil
+	end
+	return math.clamp(diametroAlvo / diametroOrigem, 0.2, 5)
+end
+
+local function fatorEscalaPorTemplateGaragem(modeloOrigem, modeloAlvo)
+	if not modeloOrigem or not modeloAlvo then
+		return nil
+	end
+	if not modeloOrigem:IsA("Model") or not modeloAlvo:IsA("Model") then
+		return nil
+	end
+	local origem = diametroEstimadoPelaSizeGaragem(modeloOrigem:GetExtentsSize())
+	local alvo = diametroEstimadoPelaSizeGaragem(modeloAlvo:GetExtentsSize())
+	if origem <= 1e-4 or alvo <= 1e-4 then
+		return nil
+	end
+	return math.clamp(alvo / origem, 0.2, 5)
+end
+
+local PREENCHIMENTO_VISUAL_ALVO_GARAGEM = 1.00
+
+local function corrigirEscalaFinalParaPartGaragem(rodaPart, modeloMontado, escalaBaseAplicada)
+	if not rodaPart or not modeloMontado then
+		return
+	end
+	if not rodaPart:IsA("BasePart") or not modeloMontado:IsA("Model") then
+		return
+	end
+	local diametroAlvo = diametroEstimadoPelaSizeGaragem(rodaPart.Size) * PREENCHIMENTO_VISUAL_ALVO_GARAGEM
+	local diametroAtual = diametroEstimadoPelaSizeGaragem(modeloMontado:GetExtentsSize())
+	if diametroAlvo <= 1e-4 or diametroAtual <= 1e-4 then
+		return
+	end
+	local correcao = diametroAlvo / diametroAtual
+	if math.abs(correcao - 1) < 0.01 then
+		return
+	end
+	local base = 1
+	if type(escalaBaseAplicada) == "number" and escalaBaseAplicada > 0 then
+		base = escalaBaseAplicada
+	end
+	local escalaFinal = math.clamp(base * math.clamp(correcao, 0.35, 3.5), 0.2, 12)
+	modeloMontado:ScaleTo(escalaFinal)
+end
+
+local function obterTemplateReferenciaEscalaGaragem(rodaPart, player, carroSave)
+	if not rodaPart then
+		return nil
+	end
+	local emServer = obterTemplateOEMEmServerStorageGaragem(player, carroSave, rodaPart.Name)
+	if emServer then
+		return emServer
+	end
+
+	local partsModel = rodaPart:FindFirstChild("Parts")
+	if partsModel then
+		local rf = partsModel:FindFirstChild("RodaFabrica")
+		if rf and rf:IsA("Model") then
+			return rf
+		end
+	end
+
+	local embarcado = rodaPart:FindFirstChild("RodaFabrica")
+	if embarcado and embarcado:IsA("Model") then
+		return embarcado
+	end
+
+	return nil
+end
+
+local function relNoCuboEhValidoGaragem(rodaPart, rel)
+	if not rodaPart or not rodaPart:IsA("BasePart") then
+		return false
+	end
+	if typeof(rel) ~= "CFrame" then
+		return false
+	end
+	local limite = math.max(rodaPart.Size.X, rodaPart.Size.Y, rodaPart.Size.Z) * 1.6
+	return rel.Position.Magnitude <= limite
+end
+
+local function obterRelPosicaoConfiavelNoCuboGaragem(rodaPart, player, carroSave, modeloRodaTemplate)
+	local templateRef = obterTemplateReferenciaEscalaGaragem(rodaPart, player, carroSave)
+	if templateRef and templateRef:IsA("Model") then
+		local relRef = templateRef:GetAttribute("OEM_PivotVsCubo")
+		if relNoCuboEhValidoGaragem(rodaPart, relRef) then
+			return relRef
+		end
+	end
+	if modeloRodaTemplate and modeloRodaTemplate:IsA("Model") then
+		local relTemplate = modeloRodaTemplate:GetAttribute("OEM_PivotVsCubo")
+		if relNoCuboEhValidoGaragem(rodaPart, relTemplate) then
+			return relTemplate
+		end
+	end
+	return nil
 end
 
 local function limparConstraintsComReferenciasExternasGaragem(raizModelo)
@@ -311,6 +443,12 @@ local function aplicarRodasDoSave(novoCarro, carroSave)
 				if playerDono then
 					garantirBackupOEMTemplateEmServerStorageGaragem(playerDono, carroSave, rodaPart)
 				end
+				local relPosicao = obterRelPosicaoConfiavelNoCuboGaragem(rodaPart, playerDono, carroSave, rodaOriginal)
+				local fatorEscala = fatorEscalaPelaPartGaragem(rodaPart, rodaOriginal)
+				if not fatorEscala then
+					local templateEscala = obterTemplateReferenciaEscalaGaragem(rodaPart, playerDono, carroSave)
+					fatorEscala = fatorEscalaPorTemplateGaragem(rodaOriginal, templateEscala)
+				end
 				for _, filho in ipairs(partsModel:GetChildren()) do
 					pcall(function()
 						filho:Destroy()
@@ -321,8 +459,22 @@ local function aplicarRodasDoSave(novoCarro, carroSave)
 				local okClone = pcall(function()
 					novaRodaVisual = rodaOriginal:Clone()
 					novaRodaVisual.Parent = partsModel
-					local rel = rodaOriginal:GetAttribute("OEM_PivotVsCubo")
-					if typeof(rel) == "CFrame" then
+					local escalaBase = 1
+					if typeof(fatorEscala) == "number" and fatorEscala > 0 and math.abs(fatorEscala - 1) > 1e-3 then
+						novaRodaVisual:ScaleTo(fatorEscala)
+						escalaBase = fatorEscala
+					end
+					local rel = relPosicao
+					if not relNoCuboEhValidoGaragem(rodaPart, rel) then
+						rel = rodaOriginal:GetAttribute("OEM_PivotVsCubo")
+					end
+					if relNoCuboEhValidoGaragem(rodaPart, rel) then
+						novaRodaVisual:PivotTo(rodaPart.CFrame * rel)
+					else
+						novaRodaVisual:PivotTo(rodaPart.CFrame)
+					end
+					corrigirEscalaFinalParaPartGaragem(rodaPart, novaRodaVisual, escalaBase)
+					if relNoCuboEhValidoGaragem(rodaPart, rel) then
 						novaRodaVisual:PivotTo(rodaPart.CFrame * rel)
 					else
 						novaRodaVisual:PivotTo(rodaPart.CFrame)

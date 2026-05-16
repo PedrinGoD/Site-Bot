@@ -37,6 +37,8 @@
   function readItemFromAnchor(a) {
     const itemName = (a && a.getAttribute("data-checkout-item")) || "Item";
     const amountCents = parseInt((a && a.getAttribute("data-checkout-cents")) || "100", 10);
+    const cardAmountCents = parseInt((a && a.getAttribute("data-checkout-card-cents")) || String(amountCents), 10);
+    const baseAmountCents = parseInt((a && a.getAttribute("data-checkout-base-cents")) || String(amountCents), 10);
     const grantTier = ((a && a.getAttribute("data-grant-tier")) || "").trim();
     const grantVehicleId = ((a && a.getAttribute("data-grant-vehicle-id")) || "").trim();
     const grantType = ((a && a.getAttribute("data-grant-type")) || "vip").trim() || "vip";
@@ -47,6 +49,8 @@
       id: [
         itemName,
         String(amountCents),
+        String(baseAmountCents),
+        String(cardAmountCents),
         grantTier,
         grantType,
         String(grantDays),
@@ -55,7 +59,9 @@
         String(grantXpAmount),
       ].join("|"),
       itemName,
-      amountCents: Number.isNaN(amountCents) ? 100 : Math.max(50, amountCents),
+      amountCents: Number.isNaN(cardAmountCents) ? 100 : Math.max(50, cardAmountCents),
+      baseAmountCents: Number.isNaN(baseAmountCents) ? Math.max(50, amountCents || 100) : Math.max(50, baseAmountCents),
+      cardAmountCents: Number.isNaN(cardAmountCents) ? Math.max(50, amountCents || 100) : Math.max(50, cardAmountCents),
       quantity: 1,
       itemImageUrl: resolveItemImageUrl(a),
       grantTier,

@@ -20,6 +20,38 @@
     return ` product-card__badge--${v}`;
   }
 
+  function moneyBr(cents) {
+    return "R$ " + (Number(cents || 0) / 100).toFixed(2).replace(".", ",");
+  }
+
+  function getPricingCfg() {
+    const cfg = typeof window.GEAR_PRICING === "object" && window.GEAR_PRICING ? window.GEAR_PRICING : {};
+    return {
+      cardFeePercent: Number(cfg.cardFeePercent) > 0 ? Number(cfg.cardFeePercent) : 3.99,
+      cardFeeFixedCents: Number(cfg.cardFeeFixedCents) >= 0 ? Math.round(Number(cfg.cardFeeFixedCents)) : 39,
+      itemCentsAreBasePrice: cfg.itemCentsAreBasePrice !== false,
+      showPixNote: cfg.showPixNote !== false,
+    };
+  }
+
+  function computeCardFromBase(baseCents) {
+    const cfg = getPricingCfg();
+    const pct = cfg.cardFeePercent / 100;
+    const gross = (Number(baseCents || 0) + cfg.cardFeeFixedCents) / (1 - pct);
+    return Math.max(50, Math.round(gross));
+  }
+
+  function resolvePrices(item) {
+    const raw = Math.max(50, parseInt(item && item.stripeAmountCents, 10) || 100);
+    const cfg = getPricingCfg();
+    const baseCents = cfg.itemCentsAreBasePrice ? raw : Math.max(50, parseInt(item && item.baseAmountCents, 10) || raw);
+    const cardCents =
+      cfg.itemCentsAreBasePrice
+        ? computeCardFromBase(baseCents)
+        : Math.max(50, parseInt(item && item.cardAmountCents, 10) || raw);
+    return { baseCents, cardCents };
+  }
+
   /**
    * @param {object} p
    * @param {{ showBadge?: boolean }} [opts]
@@ -38,17 +70,21 @@
     </div>`
       : "";
     const cardMod = imgSrc ? " product-card--has-media" : "";
+    const prices = resolvePrices(p);
+    const displayPrice = `No cartão: ${moneyBr(prices.cardCents)}`;
+    const pixNote = getPricingCfg().showPixNote ? `Pix com desconto: ${moneyBr(prices.baseCents)}` : "";
     return `
     <article class="product-card${cardMod}">
       ${badgeLine}
       ${mediaLine}
       <h3>${escapeHtml(p.title)}</h3>
       <p class="product-card__desc">${escapeHtml(p.desc)}</p>
-      <div class="product-card__price">${escapeHtml(p.price)}</div>
+      <div class="product-card__price">${escapeHtml(displayPrice)}</div>
+      ${pixNote ? `<p class="product-card__note">${escapeHtml(pixNote)}</p>` : ""}
       ${p.note ? `<p class="product-card__note">${escapeHtml(p.note)}</p>` : ""}
       <div class="product-card__actions">
-        <a class="btn btn--primary js-cart-add" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(p.title)}" data-checkout-price="${escapeAttr(p.price)}" data-checkout-cents="${escapeAttr(String(p.stripeAmountCents != null ? p.stripeAmountCents : 100))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${p.grantType ? escapeAttr(p.grantType) : ""}" data-grant-tier="${p.grantTier ? escapeAttr(p.grantTier) : ""}" data-grant-vehicle-id="${p.grantVehicleId ? escapeAttr(String(p.grantVehicleId).trim()) : ""}" data-grant-money="${p.grantMoneyAmount != null ? escapeAttr(String(p.grantMoneyAmount)) : ""}" data-grant-xp="${p.grantXpAmount != null ? escapeAttr(String(p.grantXpAmount)) : ""}" data-grant-days="${p.grantDays != null ? escapeAttr(String(p.grantDays)) : ""}">Adicionar ao carrinho</a>
-        <a class="btn btn--ghost js-cart-buy-now" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(p.title)}" data-checkout-price="${escapeAttr(p.price)}" data-checkout-cents="${escapeAttr(String(p.stripeAmountCents != null ? p.stripeAmountCents : 100))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${p.grantType ? escapeAttr(p.grantType) : ""}" data-grant-tier="${p.grantTier ? escapeAttr(p.grantTier) : ""}" data-grant-vehicle-id="${p.grantVehicleId ? escapeAttr(String(p.grantVehicleId).trim()) : ""}" data-grant-money="${p.grantMoneyAmount != null ? escapeAttr(String(p.grantMoneyAmount)) : ""}" data-grant-xp="${p.grantXpAmount != null ? escapeAttr(String(p.grantXpAmount)) : ""}" data-grant-days="${p.grantDays != null ? escapeAttr(String(p.grantDays)) : ""}">Comprar agora</a>
+        <a class="btn btn--primary js-cart-add" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(p.title)}" data-checkout-price="${escapeAttr(displayPrice)}" data-checkout-cents="${escapeAttr(String(prices.cardCents))}" data-checkout-card-cents="${escapeAttr(String(prices.cardCents))}" data-checkout-base-cents="${escapeAttr(String(prices.baseCents))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${p.grantType ? escapeAttr(p.grantType) : ""}" data-grant-tier="${p.grantTier ? escapeAttr(p.grantTier) : ""}" data-grant-vehicle-id="${p.grantVehicleId ? escapeAttr(String(p.grantVehicleId).trim()) : ""}" data-grant-money="${p.grantMoneyAmount != null ? escapeAttr(String(p.grantMoneyAmount)) : ""}" data-grant-xp="${p.grantXpAmount != null ? escapeAttr(String(p.grantXpAmount)) : ""}" data-grant-days="${p.grantDays != null ? escapeAttr(String(p.grantDays)) : ""}">Adicionar ao carrinho</a>
+        <a class="btn btn--ghost js-cart-buy-now" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(p.title)}" data-checkout-price="${escapeAttr(displayPrice)}" data-checkout-cents="${escapeAttr(String(prices.cardCents))}" data-checkout-card-cents="${escapeAttr(String(prices.cardCents))}" data-checkout-base-cents="${escapeAttr(String(prices.baseCents))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${p.grantType ? escapeAttr(p.grantType) : ""}" data-grant-tier="${p.grantTier ? escapeAttr(p.grantTier) : ""}" data-grant-vehicle-id="${p.grantVehicleId ? escapeAttr(String(p.grantVehicleId).trim()) : ""}" data-grant-money="${p.grantMoneyAmount != null ? escapeAttr(String(p.grantMoneyAmount)) : ""}" data-grant-xp="${p.grantXpAmount != null ? escapeAttr(String(p.grantXpAmount)) : ""}" data-grant-days="${p.grantDays != null ? escapeAttr(String(p.grantDays)) : ""}">Comprar agora</a>
       </div>
     </article>`;
   }
@@ -81,19 +117,23 @@
     const grantType = p.grantType && String(p.grantType).trim() !== "" ? String(p.grantType).trim() : "vip";
     const grantVehicleId =
       p.grantVehicleId && String(p.grantVehicleId).trim() !== "" ? String(p.grantVehicleId).trim() : "";
+    const prices = resolvePrices(p);
+    const displayPrice = `No cartão: ${moneyBr(prices.cardCents)}`;
+    const pixNote = getPricingCfg().showPixNote ? `Pix com desconto: ${moneyBr(prices.baseCents)}` : "";
     return `
     <article class="product-card product-card--vip">
       <button type="button" class="product-card__vip-trigger" aria-haspopup="dialog" aria-controls="${escapeAttr(dlgId)}">
         ${thumb}
         <span class="product-card__vip-trigger-text">
           <span class="product-card__vip-title">${escapeHtml(p.title)}</span>
-          <span class="product-card__price product-card__price--vip">${escapeHtml(p.price)}</span>
+          <span class="product-card__price product-card__price--vip">${escapeHtml(displayPrice)}</span>
+          ${pixNote ? `<span class="product-card__vip-hint">${escapeHtml(pixNote)}</span>` : ""}
           <span class="product-card__vip-hint">Ver detalhes</span>
         </span>
       </button>
       <div class="product-card__actions product-card__actions--vip">
-        <a class="btn btn--primary js-cart-add" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(sec.title + " — " + p.title)}" data-checkout-price="${escapeAttr(p.price)}" data-checkout-cents="${escapeAttr(String(p.stripeAmountCents != null ? p.stripeAmountCents : 100))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${escapeAttr(grantType)}" data-grant-tier="${grantTier ? escapeAttr(grantTier) : ""}" data-grant-vehicle-id="${grantVehicleId ? escapeAttr(grantVehicleId) : ""}" data-grant-money="${p.grantMoneyAmount != null ? escapeAttr(String(p.grantMoneyAmount)) : ""}" data-grant-xp="${p.grantXpAmount != null ? escapeAttr(String(p.grantXpAmount)) : ""}" data-grant-days="${escapeAttr(String(grantDays))}">Adicionar ao carrinho</a>
-        <a class="btn btn--ghost js-cart-buy-now" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(sec.title + " — " + p.title)}" data-checkout-price="${escapeAttr(p.price)}" data-checkout-cents="${escapeAttr(String(p.stripeAmountCents != null ? p.stripeAmountCents : 100))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${escapeAttr(grantType)}" data-grant-tier="${grantTier ? escapeAttr(grantTier) : ""}" data-grant-vehicle-id="${grantVehicleId ? escapeAttr(grantVehicleId) : ""}" data-grant-money="${p.grantMoneyAmount != null ? escapeAttr(String(p.grantMoneyAmount)) : ""}" data-grant-xp="${p.grantXpAmount != null ? escapeAttr(String(p.grantXpAmount)) : ""}" data-grant-days="${escapeAttr(String(grantDays))}">Comprar agora</a>
+        <a class="btn btn--primary js-cart-add" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(sec.title + " — " + p.title)}" data-checkout-price="${escapeAttr(displayPrice)}" data-checkout-cents="${escapeAttr(String(prices.cardCents))}" data-checkout-card-cents="${escapeAttr(String(prices.cardCents))}" data-checkout-base-cents="${escapeAttr(String(prices.baseCents))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${escapeAttr(grantType)}" data-grant-tier="${grantTier ? escapeAttr(grantTier) : ""}" data-grant-vehicle-id="${grantVehicleId ? escapeAttr(grantVehicleId) : ""}" data-grant-money="${p.grantMoneyAmount != null ? escapeAttr(String(p.grantMoneyAmount)) : ""}" data-grant-xp="${p.grantXpAmount != null ? escapeAttr(String(p.grantXpAmount)) : ""}" data-grant-days="${escapeAttr(String(grantDays))}">Adicionar ao carrinho</a>
+        <a class="btn btn--ghost js-cart-buy-now" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(sec.title + " — " + p.title)}" data-checkout-price="${escapeAttr(displayPrice)}" data-checkout-cents="${escapeAttr(String(prices.cardCents))}" data-checkout-card-cents="${escapeAttr(String(prices.cardCents))}" data-checkout-base-cents="${escapeAttr(String(prices.baseCents))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${escapeAttr(grantType)}" data-grant-tier="${grantTier ? escapeAttr(grantTier) : ""}" data-grant-vehicle-id="${grantVehicleId ? escapeAttr(grantVehicleId) : ""}" data-grant-money="${p.grantMoneyAmount != null ? escapeAttr(String(p.grantMoneyAmount)) : ""}" data-grant-xp="${p.grantXpAmount != null ? escapeAttr(String(p.grantXpAmount)) : ""}" data-grant-days="${escapeAttr(String(grantDays))}">Comprar agora</a>
       </div>
       <dialog class="vip-detail-dialog" id="${escapeAttr(dlgId)}" aria-labelledby="${escapeAttr(titleId)}">
         <div class="vip-detail-dialog__backdrop" aria-hidden="true"></div>

@@ -51,15 +51,26 @@
     return Math.max(0, Math.min(90, pct));
   }
 
-  function totals() {
+  function lineUnitCents(item, method) {
+    const fallback = Math.max(50, parseInt(item.amountCents, 10) || 100);
+    const card = Math.max(50, parseInt(item.cardAmountCents, 10) || fallback);
+    const base = Math.max(50, parseInt(item.baseAmountCents, 10) || fallback);
+    return method === "pix" ? base : card;
+  }
+
+  function totalsFor(method) {
     const subtotal = cartItems.reduce((acc, it) => {
       const qty = Math.max(1, parseInt(it.quantity, 10) || 1);
-      const cents = Math.max(50, parseInt(it.amountCents, 10) || 100);
+      const cents = lineUnitCents(it, method);
       return acc + qty * cents;
     }, 0);
     const pct = couponPercent(couponCode);
     const discount = Math.floor((subtotal * pct) / 100);
     return { subtotal, pct, discount, total: Math.max(0, subtotal - discount) };
+  }
+
+  function totals() {
+    return totalsFor(selectedPaymentMethod);
   }
 
   function render() {
@@ -73,15 +84,25 @@
       } else {
         list.innerHTML = cartItems
           .map(
-            (it, idx) =>
+            (it, idx) => {
+              const unit = lineUnitCents(it, selectedPaymentMethod);
+              const pixUnit = lineUnitCents(it, "pix");
+              const cardUnit = lineUnitCents(it, "card");
+              const methodHint =
+                selectedPaymentMethod === "card" && pixUnit < cardUnit
+                  ? `<small>Pix: ${moneyBr(pixUnit)}</small>`
+                  : "";
+              return (
               `<div class="checkout-line">
-                <div><strong>${it.itemName}</strong><br/><small>${moneyBr(it.amountCents)} x ${it.quantity}</small></div>
+                <div><strong>${it.itemName}</strong><br/><small>${moneyBr(unit)} x ${it.quantity}</small>${methodHint}</div>
                 <div class="checkout-line__actions">
                   <button type="button" class="btn btn--ghost" data-dec="${idx}">-</button>
                   <button type="button" class="btn btn--ghost" data-inc="${idx}">+</button>
                   <button type="button" class="btn btn--ghost" data-rm="${idx}">x</button>
                 </div>
               </div>`
+              );
+            }
           )
           .join("");
         list.querySelectorAll("[data-dec]").forEach((el) =>
@@ -114,10 +135,26 @@
       }
     }
     if (total) {
-      total.textContent =
-        t.discount > 0
-          ? `Subtotal ${moneyBr(t.subtotal)} — Desconto ${t.pct}% (${moneyBr(t.discount)}) — Total ${moneyBr(t.total)}`
-          : `Total: ${moneyBr(t.total)}`;
+      const cardTotals = totalsFor("card");
+      const pixTotals = totalsFor("pix");
+      const pixDiscount = Math.max(0, cardTotals.total - pixTotals.total);
+      if (selectedPaymentMethod === "pix") {
+        total.textContent =
+          t.discount > 0
+            ? `Total no Pix: ${moneyBr(t.total)} — cupom ${t.pct}% aplicado`
+            : `Total no Pix: ${moneyBr(t.total)}`;
+        if (pixDiscount > 0) {
+          total.textContent += ` (Desconto Pix aplicado: ${moneyBr(pixDiscount)})`;
+        }
+      } else {
+        total.textContent =
+          t.discount > 0
+            ? `Total no cartão: ${moneyBr(t.total)} — cupom ${t.pct}% aplicado`
+            : `Total no cartão: ${moneyBr(t.total)}`;
+        if (pixTotals.total < cardTotals.total) {
+          total.textContent += ` — no Pix fica ${moneyBr(pixTotals.total)}`;
+        }
+      }
     }
     if (couponStatus) {
       couponStatus.textContent =
@@ -219,7 +256,7 @@
       amountCents: t.total,
       items: cartItems.map((it) => ({
         itemName: it.itemName,
-        amountCents: Math.max(50, parseInt(it.amountCents, 10) || 100),
+        amountCents: lineUnitCents(it, selectedPaymentMethod),
         quantity: Math.max(1, parseInt(it.quantity, 10) || 1),
         itemImageUrl: it.itemImageUrl || undefined,
         grantTier: it.grantTier || undefined,
@@ -361,8 +398,12 @@
 
   function wirePaymentMethodOptions() {
     const pixFields = document.getElementById("checkout-pix-fields");
+    const submitBtn = document.getElementById("checkout-submit");
     function syncPixFields() {
       if (pixFields) pixFields.hidden = selectedPaymentMethod !== "pix";
+      if (submitBtn) {
+        submitBtn.textContent = selectedPaymentMethod === "pix" ? "Pagar com Pix" : "Pagar com cartão";
+      }
     }
     document.querySelectorAll(".checkout-pay-option[data-pay]").forEach((btn) => {
       btn.addEventListener("click", function () {
@@ -373,6 +414,7 @@
           b.classList.toggle("is-active", b === btn);
         });
         syncPixFields();
+        render();
       });
     });
     syncPixFields();

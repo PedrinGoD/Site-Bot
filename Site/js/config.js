@@ -43,6 +43,18 @@ window.GEAR_PICPAY = {
 };
 
 /**
+ * Regras de preço:
+ * - stripeAmountCents nos catálogos = valor base (líquido desejado / preço Pix)
+ * - cartão aplica taxa embutida automaticamente no frontend
+ */
+window.GEAR_PRICING = {
+  cardFeePercent: 3.99,
+  cardFeeFixedCents: 39,
+  itemCentsAreBasePrice: true,
+  showPixNote: true,
+};
+
+/**
  * Simulação sem pagamento (só Discord). Desative se usar só Stripe.
  */
 window.GEAR_CHECKOUT_DEMO = {

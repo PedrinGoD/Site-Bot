@@ -261,6 +261,97 @@ local function obterTemplateOEMEmServerStorage(player, carroSave, nomePos)
 	return nil
 end
 
+local function diametroEstimadoPelaSize(v)
+	local a = { v.X, v.Y, v.Z }
+	table.sort(a, function(x, y)
+		return x > y
+	end)
+	-- Para roda: as 2 maiores dimensões tendem a representar o diâmetro visual.
+	return (a[1] + a[2]) * 0.5
+end
+
+local function fatorEscalaPelaPart(rodaPart, modeloOrigem)
+	if not rodaPart or not modeloOrigem then
+		return nil
+	end
+	if not rodaPart:IsA("BasePart") or not modeloOrigem:IsA("Model") then
+		return nil
+	end
+	local diametroAlvo = diametroEstimadoPelaSize(rodaPart.Size)
+	local diametroOrigem = diametroEstimadoPelaSize(modeloOrigem:GetExtentsSize())
+	if diametroAlvo <= 1e-4 or diametroOrigem <= 1e-4 then
+		return nil
+	end
+	return math.clamp(diametroAlvo / diametroOrigem, 0.2, 5)
+end
+
+local function fatorEscalaPorTemplate(modeloOrigem, modeloAlvo)
+	if not modeloOrigem or not modeloAlvo then
+		return nil
+	end
+	if not modeloOrigem:IsA("Model") or not modeloAlvo:IsA("Model") then
+		return nil
+	end
+	local origem = diametroEstimadoPelaSize(modeloOrigem:GetExtentsSize())
+	local alvo = diametroEstimadoPelaSize(modeloAlvo:GetExtentsSize())
+	if origem <= 1e-4 or alvo <= 1e-4 then
+		return nil
+	end
+	return math.clamp(alvo / origem, 0.2, 5)
+end
+
+local PREENCHIMENTO_VISUAL_ALVO = 1.00
+
+local function corrigirEscalaFinalParaPart(rodaPart, modeloMontado, escalaBaseAplicada)
+	if not rodaPart or not modeloMontado then
+		return
+	end
+	if not rodaPart:IsA("BasePart") or not modeloMontado:IsA("Model") then
+		return
+	end
+	local diametroAlvo = diametroEstimadoPelaSize(rodaPart.Size) * PREENCHIMENTO_VISUAL_ALVO
+	local diametroAtual = diametroEstimadoPelaSize(modeloMontado:GetExtentsSize())
+	if diametroAlvo <= 1e-4 or diametroAtual <= 1e-4 then
+		return
+	end
+	local correcao = diametroAlvo / diametroAtual
+	if math.abs(correcao - 1) < 0.01 then
+		return
+	end
+	local base = 1
+	if type(escalaBaseAplicada) == "number" and escalaBaseAplicada > 0 then
+		base = escalaBaseAplicada
+	end
+	local escalaFinal = math.clamp(base * math.clamp(correcao, 0.35, 3.5), 0.2, 12)
+	modeloMontado:ScaleTo(escalaFinal)
+end
+
+local function obterTemplateReferenciaEscala(rodaPart, player, carroSave)
+	if not rodaPart then
+		return nil
+	end
+	local nomePos = rodaPart.Name
+	local emServer = obterTemplateOEMEmServerStorage(player, carroSave, nomePos)
+	if emServer then
+		return emServer
+	end
+
+	local partsModel = rodaPart:FindFirstChild("Parts")
+	if partsModel then
+		local rf = partsModel:FindFirstChild("RodaFabrica")
+		if rf and rf:IsA("Model") then
+			return rf
+		end
+	end
+
+	local embarcado = rodaPart:FindFirstChild("RodaFabrica")
+	if embarcado and embarcado:IsA("Model") then
+		return embarcado
+	end
+
+	return nil
+end
+
 --- Template para voltar ao save de fábrica (nil / "" / "Padrao"):
 --- 0) Clone guardado em ServerStorage._GearUpWheelOEM (criado na 1.ª troca / no spawn com roda da loja)
 --- 1) Model "RodaFabrica" dentro de Parts (se ainda existir)
@@ -326,19 +417,57 @@ local function saveIndicaRodaDeFabrica(carroSave, nomePos)
 	return s == "" or s == "Padrao"
 end
 
-local function pivotarModeloRodaNoCubo(rodaPart, modeloTemplate, instanciaMontada)
-	local rel = modeloTemplate:GetAttribute("OEM_PivotVsCubo")
-	if typeof(rel) == "CFrame" then
+local function relNoCuboEhValido(rodaPart, rel)
+	if not rodaPart or not rodaPart:IsA("BasePart") then
+		return false
+	end
+	if typeof(rel) ~= "CFrame" then
+		return false
+	end
+	local limite = math.max(rodaPart.Size.X, rodaPart.Size.Y, rodaPart.Size.Z) * 1.6
+	return rel.Position.Magnitude <= limite
+end
+
+local function obterRelPosicaoConfiavelNoCubo(rodaPart, player, carroSave, modeloRodaTemplate)
+	local templateRef = obterTemplateReferenciaEscala(rodaPart, player, carroSave)
+	if templateRef and templateRef:IsA("Model") then
+		local relRef = templateRef:GetAttribute("OEM_PivotVsCubo")
+		if relNoCuboEhValido(rodaPart, relRef) then
+			return relRef
+		end
+	end
+	if modeloRodaTemplate and modeloRodaTemplate:IsA("Model") then
+		local relTemplate = modeloRodaTemplate:GetAttribute("OEM_PivotVsCubo")
+		if relNoCuboEhValido(rodaPart, relTemplate) then
+			return relTemplate
+		end
+	end
+	return nil
+end
+
+local function pivotarModeloRodaNoCubo(rodaPart, modeloTemplate, instanciaMontada, relOverride, forcarRelOverride)
+	local rel = relOverride
+	if forcarRelOverride and typeof(rel) == "CFrame" then
+		instanciaMontada:PivotTo(rodaPart.CFrame * rel)
+		return
+	end
+	if not relNoCuboEhValido(rodaPart, rel) then
+		rel = modeloTemplate:GetAttribute("OEM_PivotVsCubo")
+	end
+	if relNoCuboEhValido(rodaPart, rel) then
 		instanciaMontada:PivotTo(rodaPart.CFrame * rel)
 	else
 		instanciaMontada:PivotTo(rodaPart.CFrame)
 	end
 end
 
-local function limparPartsEMontarVisual(rodaPart, modeloRodaTemplate)
+local function limparPartsEMontarVisual(rodaPart, modeloRodaTemplate, fatorEscala, relPosicao, forcarRelPosicao, aplicarAjusteVisual)
 	local partsModel = rodaPart:FindFirstChild("Parts")
 	if not partsModel or not modeloRodaTemplate then
 		return false
+	end
+	if aplicarAjusteVisual == nil then
+		aplicarAjusteVisual = true
 	end
 
 	for _, filho in ipairs(partsModel:GetChildren()) do
@@ -351,7 +480,16 @@ local function limparPartsEMontarVisual(rodaPart, modeloRodaTemplate)
 	local ok = pcall(function()
 		novaRodaVisual = modeloRodaTemplate:Clone()
 		novaRodaVisual.Parent = partsModel
-		pivotarModeloRodaNoCubo(rodaPart, modeloRodaTemplate, novaRodaVisual)
+		local escalaBase = 1
+		if typeof(fatorEscala) == "number" and fatorEscala > 0 and math.abs(fatorEscala - 1) > 1e-3 then
+			novaRodaVisual:ScaleTo(fatorEscala)
+			escalaBase = fatorEscala
+		end
+		pivotarModeloRodaNoCubo(rodaPart, modeloRodaTemplate, novaRodaVisual, relPosicao, forcarRelPosicao)
+		if aplicarAjusteVisual then
+			corrigirEscalaFinalParaPart(rodaPart, novaRodaVisual, escalaBase)
+			pivotarModeloRodaNoCubo(rodaPart, modeloRodaTemplate, novaRodaVisual, relPosicao, forcarRelPosicao)
+		end
 	end)
 	if not ok or not novaRodaVisual then
 		return false
@@ -442,7 +580,15 @@ instalarEvento.OnServerEvent:Connect(function(player, rodaPart)
 			garantirBackupOEMTemplateEmServerStorage(player, carroSave, rodaPart)
 		end
 
-		if not limparPartsEMontarVisual(rodaPart, rodaOriginal) then
+		-- Instalação de roda MOD: usa referência da própria roda nova (ou centro do cubo),
+		-- evitando herdar offset OEM que pode deslocar visual em alguns carros.
+		local relPosicao = nil
+		local fatorEscala = fatorEscalaPelaPart(rodaPart, rodaOriginal)
+		if not fatorEscala then
+			local templateEscala = obterTemplateReferenciaEscala(rodaPart, player, carroSave)
+			fatorEscala = fatorEscalaPorTemplate(rodaOriginal, templateEscala)
+		end
+		if not limparPartsEMontarVisual(rodaPart, rodaOriginal, fatorEscala, relPosicao) then
 			return
 		end
 
@@ -520,7 +666,8 @@ instalarEvento.OnServerEvent:Connect(function(player, rodaPart)
 
 	local templateFabrica = resolverTemplateRodaDeFabrica(rodaPart, player, carroSave)
 	if templateFabrica then
-		if limparPartsEMontarVisual(rodaPart, templateFabrica) then
+		local relPosicaoOEM = templateFabrica:GetAttribute("OEM_PivotVsCubo")
+		if limparPartsEMontarVisual(rodaPart, templateFabrica, nil, relPosicaoOEM, true, false) then
 			local aderenciaFabrica = tonumber(templateFabrica:GetAttribute("Aderencia")) or 0.7
 			aplicarFisicaRoda(rodaPart, aderenciaFabrica, nil)
 		end
