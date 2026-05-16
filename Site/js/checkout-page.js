@@ -4,6 +4,7 @@
   let cartItems = [];
   let robloxConfirmedUserId = null;
   let couponCode = "";
+  let couponPreview = null;
   /** @type {"card"|"pix"} */
   let selectedPaymentMethod = "card";
 
@@ -45,6 +46,10 @@
     }
   }
 
+  function resetCouponPreview() {
+    couponPreview = null;
+  }
+
   function couponPercent(code) {
     const pct = parseInt(getCouponsCfg()[String(code || "").trim().toUpperCase()], 10);
     if (Number.isNaN(pct)) return 0;
@@ -73,6 +78,66 @@
     return totalsFor(selectedPaymentMethod);
   }
 
+  function totalsWithCouponPreview() {
+    const base = totals();
+    if (
+      !couponPreview ||
+      couponPreview.error ||
+      !couponCode ||
+      String(couponPreview.couponCode || "").toUpperCase() !== String(couponCode).toUpperCase()
+    ) {
+      return base;
+    }
+    const discount = Math.max(0, parseInt(couponPreview.discountCents, 10) || 0);
+    return {
+      subtotal: base.subtotal,
+      pct: Math.max(0, parseInt(couponPreview.discountPercent, 10) || 0),
+      discount,
+      total: Math.max(0, base.subtotal - discount),
+    };
+  }
+
+  async function previewCouponOnServer() {
+    const code = String(couponCode || "").trim().toUpperCase();
+    if (!code) {
+      couponPreview = null;
+      return;
+    }
+    const stripeCfg = getStripeCfg();
+    const apiBase = String((stripeCfg && stripeCfg.apiBase) || "http://127.0.0.1:3847").replace(/\/$/, "");
+    const subtotalCents = totals().subtotal;
+    try {
+      const r = await fetch(`${apiBase}/checkout/coupon-preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ couponCode: code, subtotalCents }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || !data.ok) {
+        couponPreview = {
+          couponCode: code,
+          error: String(data.error || "cupom inválido ou expirado"),
+          discountCents: 0,
+          discountPercent: 0,
+        };
+        return;
+      }
+      couponPreview = {
+        couponCode: String(data.couponCode || code).toUpperCase(),
+        error: "",
+        discountCents: Math.max(0, parseInt(data.discountCents, 10) || 0),
+        discountPercent: Math.max(0, parseInt(data.discountPercent, 10) || 0),
+      };
+    } catch (_) {
+      couponPreview = {
+        couponCode: code,
+        error: "não foi possível validar o cupom agora",
+        discountCents: 0,
+        discountPercent: 0,
+      };
+    }
+  }
+
   function updatePaymentOptionLabels() {
     const cardBtn = document.querySelector('.checkout-pay-option[data-pay="card"]');
     const pixBtn = document.querySelector('.checkout-pay-option[data-pay="pix"]');
@@ -94,7 +159,7 @@
     const list = document.getElementById("checkout-cart-list");
     const total = document.getElementById("checkout-total");
     const couponStatus = document.getElementById("checkout-coupon-status");
-    const t = totals();
+    const t = totalsWithCouponPreview();
     updatePaymentOptionLabels();
     if (list) {
       if (!cartItems.length) {
@@ -128,6 +193,7 @@
             const i = parseInt(this.getAttribute("data-dec"), 10);
             if (!cartItems[i]) return;
             cartItems[i].quantity = Math.max(1, (parseInt(cartItems[i].quantity, 10) || 1) - 1);
+            resetCouponPreview();
             saveState();
             render();
           })
@@ -137,6 +203,7 @@
             const i = parseInt(this.getAttribute("data-inc"), 10);
             if (!cartItems[i]) return;
             cartItems[i].quantity = Math.max(1, (parseInt(cartItems[i].quantity, 10) || 1) + 1);
+            resetCouponPreview();
             saveState();
             render();
           })
@@ -146,6 +213,7 @@
             const i = parseInt(this.getAttribute("data-rm"), 10);
             if (!cartItems[i]) return;
             cartItems.splice(i, 1);
+            resetCouponPreview();
             saveState();
             render();
           })
@@ -153,10 +221,9 @@
       }
     }
     if (total) {
-      const cardTotals = totalsFor("card");
-      const pixTotals = totalsFor("pix");
+      const cardTotals = selectedPaymentMethod === "card" ? t : totalsFor("card");
+      const pixTotals = selectedPaymentMethod === "pix" ? t : totalsFor("pix");
       const pixDiscount = Math.max(0, cardTotals.total - pixTotals.total);
-      const couponPendingServerValidation = Boolean(couponCode && t.pct === 0);
       if (selectedPaymentMethod === "pix") {
         total.textContent =
           t.discount > 0
@@ -174,17 +241,19 @@
           total.textContent += ` — no Pix fica ${moneyBr(pixTotals.total)}`;
         }
       }
-      if (couponPendingServerValidation) {
-        total.textContent += " — cupom será validado no pagamento";
-      }
     }
     if (couponStatus) {
-      couponStatus.textContent =
-        couponCode && t.pct === 0
-          ? "Cupom informado. A validação final acontece no pagamento."
-          : t.pct > 0
-          ? `Cupom ${couponCode} aplicado (${t.pct}% off).`
-          : "Sem cupom aplicado.";
+      if (!couponCode) {
+        couponStatus.textContent = "Sem cupom aplicado.";
+      } else if (couponPreview && !couponPreview.error && t.discount > 0) {
+        couponStatus.textContent = `Cupom ${couponCode} aplicado (${t.pct}% off) — desconto ${moneyBr(
+          t.discount
+        )}.`;
+      } else if (couponPreview && couponPreview.error) {
+        couponStatus.textContent = `Cupom inválido: ${couponPreview.error}.`;
+      } else {
+        couponStatus.textContent = "Validando cupom...";
+      }
     }
     const cInp = document.getElementById("checkout-coupon");
     if (cInp) cInp.value = couponCode;
@@ -270,7 +339,7 @@
       }
       return;
     }
-    const t = totals();
+    const t = totalsWithCouponPreview();
     const apiBase = String(stripeCfg.apiBase || "http://127.0.0.1:3847").replace(/\/$/, "");
     const payload = {
       guildId: stripeCfg.guildId || undefined,
@@ -430,6 +499,7 @@
         const pay = String(this.getAttribute("data-pay") || "").trim().toLowerCase();
         if (pay !== "card" && pay !== "pix") return;
         selectedPaymentMethod = pay;
+        resetCouponPreview();
         document.querySelectorAll(".checkout-pay-option[data-pay]").forEach((b) => {
           b.classList.toggle("is-active", b === btn);
         });
@@ -452,9 +522,10 @@
     }
     const cp = document.getElementById("checkout-coupon-apply");
     if (cp) {
-      cp.addEventListener("click", function () {
+      cp.addEventListener("click", async function () {
         const inp = document.getElementById("checkout-coupon");
         couponCode = String((inp && inp.value) || "").trim().toUpperCase();
+        await previewCouponOnServer();
         saveState();
         render();
       });
@@ -464,6 +535,7 @@
       clearBtn.addEventListener("click", function () {
         cartItems = [];
         couponCode = "";
+        resetCouponPreview();
         saveState();
         render();
       });

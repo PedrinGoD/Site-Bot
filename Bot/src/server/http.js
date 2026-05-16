@@ -12,6 +12,7 @@ const {
 const robloxGrants = require("../lib/robloxGrants");
 const picpayCheckout = require("../lib/picpayCheckout");
 const { parseCheckoutOrder } = require("../lib/parseCheckoutOrder");
+const { resolveCouponDiscount } = require("../lib/serverCoupons");
 const { registerPicPayRoutes } = require("../routes/picpay");
 
 let botPackageVersion = "0.0.0";
@@ -757,6 +758,11 @@ function startHttpServer(client) {
     return h.startsWith("Bearer ") ? h.slice(7).trim() : "";
   }
 
+  function toInt(value, fallback = 0) {
+    const n = parseInt(value, 10);
+    return Number.isFinite(n) ? n : fallback;
+  }
+
   function safeNextPath(s) {
     if (typeof s !== "string") return "index.html";
     let u = s.trim();
@@ -1116,6 +1122,37 @@ function startHttpServer(client) {
       username: sess.username,
       global_name: sess.global_name,
       avatarUrl,
+    });
+  });
+
+  /**
+   * POST /checkout/coupon-preview
+   * Prévia de desconto por cupom (UX). A validação final continua no create-checkout-session.
+   */
+  app.post("/checkout/coupon-preview", (req, res) => {
+    const couponCode = String(req.body?.couponCode || "")
+      .trim()
+      .toUpperCase();
+    const subtotalCents = Math.max(0, toInt(req.body?.subtotalCents, 0));
+    if (!couponCode) {
+      return res.status(400).json({ ok: false, error: "cupom em falta" });
+    }
+    if (subtotalCents < 50) {
+      return res.status(400).json({ ok: false, error: "subtotal inválido" });
+    }
+
+    const coupon = resolveCouponDiscount(couponCode, subtotalCents);
+    if (coupon.error) {
+      return res.status(coupon.status || 400).json({ ok: false, error: coupon.error });
+    }
+
+    return res.json({
+      ok: true,
+      couponCode: coupon.couponCode,
+      discountCents: coupon.discountCents,
+      discountPercent: coupon.discountPercent,
+      subtotalCents,
+      totalCents: Math.max(0, subtotalCents - Math.max(0, coupon.discountCents || 0)),
     });
   });
 
