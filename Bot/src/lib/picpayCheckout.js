@@ -12,10 +12,10 @@ let cachedToken = null;
 let tokenExpiresAt = 0;
 
 function apiPath(path) {
-  if (PICPAY_MODE === "payment-link" && PICPAY_SANDBOX) {
-    return `/sandbox/v1${path}`;
-  }
-  return path;
+  if (PICPAY_MODE !== "payment-link") return path;
+  if (PICPAY_SANDBOX) return `/sandbox/v1${path}`;
+  // Produção: rotas em /v1/... (sem /v1 → 404 "no Route matched")
+  return `/v1${path}`;
 }
 
 function formatApiError(prefix, r, data) {
