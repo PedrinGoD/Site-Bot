@@ -147,7 +147,8 @@ function registerPicPayRoutes(app, ctx) {
       return res.status(400).json({ ok: false, error: cust.error });
     }
 
-    const merchantChargeId = `gear-${Date.now()}-${crypto.randomBytes(6).toString("hex")}`;
+    const orderNumber = crypto.randomBytes(6).toString("hex").slice(0, 12);
+    const merchantChargeId = `gear-${orderNumber}`;
     const amountCents = parsed.totalCents;
 
     try {

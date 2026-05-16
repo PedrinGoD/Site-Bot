@@ -19,12 +19,25 @@ function apiPath(path) {
 }
 
 function formatApiError(prefix, r, data) {
-  const detail =
+  let detail =
     data.message ||
     data.error ||
-    (Array.isArray(data.errors) ? data.errors.map((e) => e.message || e).join("; ") : null) ||
-    JSON.stringify(data).slice(0, 400);
+    (Array.isArray(data.errors) ? data.errors.map((e) => e.message || e).join("; ") : null);
+  if (!detail && data.errors && typeof data.errors === "object") {
+    detail = JSON.stringify(data.errors);
+  }
+  if (!detail) detail = JSON.stringify(data).slice(0, 400);
   return new Error(`${prefix} ${r.status}: ${detail}`);
+}
+
+function paymentLinkIdFromUrl(link) {
+  if (!link || typeof link !== "string") return "";
+  try {
+    const parts = new URL(link).pathname.split("/").filter(Boolean);
+    return parts[parts.length - 1] || "";
+  } catch {
+    return "";
+  }
 }
 
 /**
@@ -121,17 +134,34 @@ async function createCheckoutPixCharge(params) {
  * @param {object} params
  */
 async function createPaymentLinkPixCharge(params) {
-  const body = {
-    amount: params.amountCents,
-    referenceId: params.merchantChargeId,
-    description: String(params.description || "Compra Gear UP").slice(0, 255),
-    paymentMethods: ["PIX"],
-    customer: params.customer,
-  };
+  const desc = String(params.description || "Compra Gear UP").slice(0, 255);
+  const orderNumber = String(params.merchantChargeId || "")
+    .replace(/^gear-/, "")
+    .slice(0, 15);
+  const siteBase = (process.env.PICPAY_CALLER_ORIGIN || process.env.SITE_BASE_URL || "").trim();
   const expSec = params.pixExpirationSeconds || 1800;
-  if (expSec > 0) {
-    body.expiresAt = new Date(Date.now() + expSec * 1000).toISOString();
-  }
+  const expiredAt = new Date(Date.now() + expSec * 1000).toISOString().slice(0, 10);
+
+  const body = {
+    charge: {
+      name: desc.slice(0, 80),
+      description: desc,
+      order_number: orderNumber,
+      ...(siteBase ? { redirect_url: `${siteBase.replace(/\/$/, "")}/pagamento-ok.html` } : {}),
+      payment: {
+        methods: ["BRCODE"],
+        brcode_arrangements: ["PIX"],
+      },
+      amounts: {
+        product: params.amountCents,
+        delivery: 0,
+      },
+    },
+    options: {
+      allow_create_pix_key: true,
+      expired_at: expiredAt,
+    },
+  };
 
   const { r, data } = await apiRequest("POST", "/paymentlink/create", body);
   if (!r.ok) throw formatApiError("PicPay paymentlink/create", r, data);
@@ -143,25 +173,56 @@ async function createPaymentLinkPixCharge(params) {
  * @param {number} [fallbackAmount]
  */
 function normalizePaymentLinkCharge(raw, fallbackAmount) {
+  if (!raw || typeof raw !== "object") {
+    return { apiMode: "payment-link", chargeStatus: "PENDING", amount: fallbackAmount };
+  }
+
+  if (raw.brcode || raw.link) {
+    const checkoutLink = raw.link || raw.deeplink || "";
+    return {
+      apiMode: "payment-link",
+      paymentLinkId: raw.paymentLinkId || paymentLinkIdFromUrl(checkoutLink),
+      chargeStatus: String(raw.status || "active").toUpperCase(),
+      amount: raw.amount ?? fallbackAmount,
+      qrCode: raw.brcode || "",
+      qrCodeBase64: "",
+      checkoutLink,
+      transactions: [],
+      totalSales: 0,
+    };
+  }
+
+  if (raw.paymentLinkId || raw.details) {
+    const d = raw.details || {};
+    const ch = d.charge || {};
+    const links = ch.links || {};
+    const checkoutLink = links.checkout || links.share || "";
+    return {
+      apiMode: "payment-link",
+      paymentLinkId: String(raw.paymentLinkId || ""),
+      chargeStatus: String(ch.status || "PENDING").toUpperCase(),
+      amount: ch.amount ?? ch.productAmount ?? fallbackAmount,
+      qrCode: ch.qrcode || ch.qrCode || "",
+      qrCodeBase64: "",
+      checkoutLink,
+      transactions: raw.transactions || [],
+      totalSales: Number(ch.totalSales || 0),
+    };
+  }
+
   const charge = raw.charge || raw.data?.charge || raw.data || raw;
   const paymentLinkId =
     charge.paymentLinkId || charge.payment_link_id || charge.id || raw.paymentLinkId || "";
-  const amount = charge.amount ?? raw.amount ?? fallbackAmount;
-  const qrCode = charge.qrCode || charge.qr_code || "";
-  const checkoutLink = charge.checkoutLink || charge.checkout_link || "";
-  const status = String(charge.status || raw.status || "PENDING").toUpperCase();
-  const transactions = charge.transactions || raw.transactions || [];
-
   return {
     apiMode: "payment-link",
     paymentLinkId: String(paymentLinkId),
-    merchantChargeId: charge.referenceId || charge.reference_id || raw.referenceId || "",
-    chargeStatus: status,
-    amount,
-    qrCode,
+    chargeStatus: String(charge.status || raw.status || "PENDING").toUpperCase(),
+    amount: charge.amount ?? raw.amount ?? fallbackAmount,
+    qrCode: charge.qrCode || charge.qr_code || charge.qrcode || "",
     qrCodeBase64: charge.qrCodeBase64 || charge.qr_code_base64 || "",
-    checkoutLink,
-    transactions,
+    checkoutLink: charge.checkoutLink || charge.checkout_link || "",
+    transactions: charge.transactions || raw.transactions || [],
+    totalSales: Number(charge.totalSales || 0),
   };
 }
 
@@ -207,6 +268,9 @@ async function getCharge(merchantChargeId, paymentLinkId) {
           tx.data.data?.transactions ||
           (Array.isArray(tx.data) ? tx.data : []);
         normalized = { ...normalized, transactions: txs };
+        if (isChargePaid({ ...normalized, transactions: txs })) {
+          normalized.chargeStatus = "PAYED";
+        }
       }
     } catch (_) {
       /* consulta de transações opcional */
@@ -219,14 +283,14 @@ async function getCharge(merchantChargeId, paymentLinkId) {
  * @param {object} charge
  */
 function isChargePaid(charge) {
+  if (Number(charge.totalSales) > 0) return true;
   const status = String(charge.chargeStatus || charge.status || "").toUpperCase();
   if (status === "PAID" || status === "PAYED" || status === "AUTHORIZED") return true;
   const txs = charge.transactions;
   if (!Array.isArray(txs)) return false;
   return txs.some((t) => {
     const st = String(t.transactionStatus || t.status || "").toUpperCase();
-    const pt = String(t.paymentType || t.payment_type || "").toUpperCase();
-    return (st === "PAID" || st === "PAYED" || st === "CAPTURED") && (!pt || pt === "PIX");
+    return st === "PAID" || st === "PAYED" || st === "CAPTURED" || st === "AUTHORIZED";
   });
 }
 
