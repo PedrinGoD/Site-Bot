@@ -10,6 +10,9 @@ const {
   verifyDiscordSession,
 } = require("../lib/sessionToken");
 const robloxGrants = require("../lib/robloxGrants");
+const picpayCheckout = require("../lib/picpayCheckout");
+const { parseCheckoutOrder } = require("../lib/parseCheckoutOrder");
+const { registerPicPayRoutes } = require("../routes/picpay");
 
 let botPackageVersion = "0.0.0";
 try {
@@ -615,6 +618,34 @@ function startHttpServer(client) {
   );
 
   app.use(express.json({ limit: "48kb" }));
+
+  const checkoutParseDeps = {
+    defaultGuildId,
+    discordClientSecret,
+    allowManualDiscordId,
+    verifyDiscordSession,
+    sessionSigningSecret,
+    extractBearer,
+  };
+
+  registerPicPayRoutes(app, {
+    client,
+    siteBaseUrl,
+    defaultGuildId,
+    discordClientSecret,
+    allowManualDiscordId,
+    sessionSigningSecret,
+    verifyDiscordSession,
+    extractBearer,
+    robloxGrants,
+    maybeQueueRobloxGrant,
+    deliverSaleToDiscord,
+    parseCheckoutOrder: (req) => parseCheckoutOrder(req, checkoutParseDeps),
+  });
+
+  if (picpayCheckout.isConfigured()) {
+    console.log("[picpay] API configurada (Pix via Gateway)");
+  }
 
   function unauthorized(res) {
     res.status(401).json({ ok: false, error: "unauthorized" });
@@ -1420,6 +1451,8 @@ function startHttpServer(client) {
       demo: Boolean(demoSaleKey),
       stripe: Boolean(stripeSecretKey),
       stripeWebhook: Boolean(stripeWebhookSecret),
+      picpay: picpayCheckout.isConfigured(),
+      picpayWebhook: Boolean((process.env.PICPAY_WEBHOOK_TOKEN || "").trim()),
       discordOAuth: Boolean(discordClientSecret && discordClientId),
       robloxGrantsApi: Boolean(robloxApiSecret),
       salesLogChannelFromEnv: Boolean(getSalesLogChannelIdFromEnv()),
@@ -1448,6 +1481,11 @@ function startHttpServer(client) {
       console.log(`  + stripe: POST /stripe/create-checkout-session`);
       console.log(`  + stripe: POST /stripe/notify-from-session  (fallback quando webhook falha)`);
       console.log(`  + stripe: POST /webhooks/stripe  (precisa STRIPE_WEBHOOK_SECRET = whsec_...)`);
+    }
+    if (picpayCheckout.isConfigured()) {
+      console.log(`  + picpay: POST /picpay/create-pix-charge`);
+      console.log(`  + picpay: GET /picpay/order/:merchantChargeId`);
+      console.log(`  + picpay: POST /webhooks/picpay  (URL HTTPS no painel PicPay)`);
     }
     if (discordClientSecret && discordClientId) {
       console.log(`  + auth: GET /auth/discord/login  (adicione redirect no Discord: ${oauthRedirectUri})`);

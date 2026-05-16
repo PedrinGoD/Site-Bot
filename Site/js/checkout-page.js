@@ -11,6 +11,10 @@
     return typeof window.GEAR_STRIPE === "object" && window.GEAR_STRIPE !== null ? window.GEAR_STRIPE : null;
   }
 
+  function getPicPayCfg() {
+    return typeof window.GEAR_PICPAY === "object" && window.GEAR_PICPAY !== null ? window.GEAR_PICPAY : null;
+  }
+
   function getCouponsCfg() {
     return typeof window.GEAR_COUPONS === "object" && window.GEAR_COUPONS !== null ? window.GEAR_COUPONS : {};
   }
@@ -231,6 +235,64 @@
       paymentMethod: selectedPaymentMethod,
     };
     if (robloxConfirmedUserId) payload.robloxUserId = robloxConfirmedUserId;
+
+    const picpayCfg = getPicPayCfg();
+    if (selectedPaymentMethod === "pix") {
+      if (!picpayCfg || !picpayCfg.enabled) {
+        if (errEl) {
+          errEl.hidden = false;
+          errEl.textContent = "Pagamento Pix não está ativo no site. Use cartão de crédito.";
+        }
+        return;
+      }
+    }
+    if (selectedPaymentMethod === "pix" && picpayCfg && picpayCfg.enabled) {
+      const emailEl = document.getElementById("checkout-pix-email");
+      const cpfEl = document.getElementById("checkout-pix-cpf");
+      payload.customerEmail = String((emailEl && emailEl.value) || "").trim();
+      payload.customerDocument = String((cpfEl && cpfEl.value) || "").replace(/\D/g, "");
+      const me = await refreshDiscordStatus();
+      if (me) {
+        payload.customerName = me.global_name || me.username || "Cliente";
+      }
+      try {
+        const r = await fetch(`${apiBase}/picpay/create-pix-charge`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
+          body: JSON.stringify(payload),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok || !data.merchantChargeId) throw new Error(data.error || "Falha ao criar cobrança Pix.");
+        try {
+          sessionStorage.setItem(
+            "gear_picpay_charge",
+            JSON.stringify({
+              merchantChargeId: data.merchantChargeId,
+              qrCode: data.qrCode || "",
+              qrCodeBase64: data.qrCodeBase64 || "",
+              amountCents: data.amountCents,
+            })
+          );
+        } catch (_) {}
+        cartItems = [];
+        couponCode = "";
+        saveState();
+        window.location.href =
+          data.redirectUrl ||
+          "pagamento-pix.html?charge=" + encodeURIComponent(data.merchantChargeId);
+        return;
+      } catch (e) {
+        if (errEl) {
+          errEl.hidden = false;
+          errEl.textContent = String(e.message || e);
+        }
+        return;
+      }
+    }
+
     try {
       const r = await fetch(`${apiBase}/stripe/create-checkout-session`, {
         method: "POST",
@@ -297,6 +359,10 @@
   }
 
   function wirePaymentMethodOptions() {
+    const pixFields = document.getElementById("checkout-pix-fields");
+    function syncPixFields() {
+      if (pixFields) pixFields.hidden = selectedPaymentMethod !== "pix";
+    }
     document.querySelectorAll(".checkout-pay-option[data-pay]").forEach((btn) => {
       btn.addEventListener("click", function () {
         const pay = String(this.getAttribute("data-pay") || "").trim().toLowerCase();
@@ -305,8 +371,10 @@
         document.querySelectorAll(".checkout-pay-option[data-pay]").forEach((b) => {
           b.classList.toggle("is-active", b === btn);
         });
+        syncPixFields();
       });
     });
+    syncPixFields();
   }
 
   function wireUi() {

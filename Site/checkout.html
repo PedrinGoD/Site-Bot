@@ -65,6 +65,17 @@
               <button class="btn btn--primary" id="checkout-discord-login" type="button">Entrar com Discord</button>
             </article>
 
+            <article class="checkout-card" id="checkout-pix-fields" hidden>
+              <h2 class="checkout-card__title">Dados para Pix (PicPay)</h2>
+              <p class="checkout-note">E-mail e CPF do pagador — exigidos pelo PicPay.</p>
+              <div class="gear-roblox-searchline" style="margin-bottom: 0.75rem">
+                <input type="email" id="checkout-pix-email" class="gear-demo-checkout__input" placeholder="Seu e-mail" autocomplete="email" />
+              </div>
+              <div class="gear-roblox-searchline">
+                <input type="text" id="checkout-pix-cpf" class="gear-demo-checkout__input" placeholder="CPF (somente números)" inputmode="numeric" maxlength="14" />
+              </div>
+            </article>
+
             <article class="checkout-card">
               <h2 class="checkout-card__title">Conta Roblox (entrega no jogo)</h2>
               <div class="gear-roblox-searchline">

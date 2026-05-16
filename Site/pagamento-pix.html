@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pagamento Pix — Gear UP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+    <style>
+      .pix-box {
+        max-width: 420px;
+        margin: 0 auto 1.5rem;
+        padding: 1.25rem;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        text-align: center;
+      }
+      .pix-box img {
+        max-width: 280px;
+        width: 100%;
+        height: auto;
+        margin: 0 auto 1rem;
+        display: block;
+        background: #fff;
+        padding: 8px;
+        border-radius: 8px;
+      }
+      .pix-copy {
+        width: 100%;
+        font-size: 0.8rem;
+        margin-bottom: 0.5rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="fire-glow" aria-hidden="true"></div>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="brand" href="index.html">
+          <img src="assets/gear-up-logo.png" alt="Gear UP" width="48" height="48" class="brand__logo" />
+          <span class="brand__text">Gear UP</span>
+        </a>
+      </div>
+    </header>
+    <main class="page-main">
+      <header class="page-head">
+        <p class="page-head__eyebrow">Pagamento</p>
+        <h1 class="page-head__title">Pague com Pix</h1>
+        <p class="page-head__lead" id="pix-amount">—</p>
+        <p class="page-head__lead" id="pix-status" style="color: var(--muted); font-size: 0.95rem">Gerando QR Code…</p>
+      </header>
+      <section class="section">
+        <div class="pix-box">
+          <img id="pix-qr-img" alt="QR Code Pix" hidden />
+          <textarea id="pix-copy-code" class="gear-demo-checkout__input pix-copy" rows="4" readonly hidden></textarea>
+          <button type="button" class="btn btn--ghost" id="pix-copy-btn" hidden>Copiar código Pix</button>
+        </div>
+        <p style="text-align: center">
+          <a class="btn btn--ghost" href="checkout.html">Voltar ao checkout</a>
+          <a class="btn btn--primary" href="pagamento-ok.html" id="pix-done-link" hidden>Já paguei — continuar</a>
+        </p>
+      </section>
+    </main>
+    <script src="js/config.js"></script>
+    <script src="js/pagamento-pix-page.js"></script>
+  </body>
+</html>

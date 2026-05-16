@@ -36,6 +36,13 @@ window.GEAR_STRIPE = {
 };
 
 /**
+ * Pix via PicPay Empresas (credenciais só no servidor — PICPAY_CLIENT_ID / PICPAY_CLIENT_SECRET).
+ */
+window.GEAR_PICPAY = {
+  enabled: true,
+};
+
+/**
  * Simulação sem pagamento (só Discord). Desative se usar só Stripe.
  */
 window.GEAR_CHECKOUT_DEMO = {
