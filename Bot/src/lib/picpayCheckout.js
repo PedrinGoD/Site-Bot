@@ -40,6 +40,19 @@ function paymentLinkIdFromUrl(link) {
   }
 }
 
+/** PicPay exige YYYY-MM-DD estritamente depois de hoje. */
+function picpayExpiredAtDate(expSec) {
+  const target = new Date(Date.now() + (expSec || 1800) * 1000);
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  const use = target > tomorrow ? target : tomorrow;
+  const y = use.getFullYear();
+  const m = String(use.getMonth() + 1).padStart(2, "0");
+  const d = String(use.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 /**
  * @returns {Promise<string>}
  */
@@ -140,7 +153,7 @@ async function createPaymentLinkPixCharge(params) {
     .slice(0, 15);
   const siteBase = (process.env.PICPAY_CALLER_ORIGIN || process.env.SITE_BASE_URL || "").trim();
   const expSec = params.pixExpirationSeconds || 1800;
-  const expiredAt = new Date(Date.now() + expSec * 1000).toISOString().slice(0, 10);
+  const expiredAt = picpayExpiredAtDate(expSec);
 
   const body = {
     charge: {
