@@ -51,7 +51,7 @@ window.GEAR_PRICING = {
   cardFeePercent: 3.99,
   cardFeeFixedCents: 39,
   itemCentsAreBasePrice: true,
-  showPixNote: true,
+  showPixNote: false,
 };
 
 /**

@@ -71,8 +71,7 @@
       : "";
     const cardMod = imgSrc ? " product-card--has-media" : "";
     const prices = resolvePrices(p);
-    const displayPrice = `No cartão: ${moneyBr(prices.cardCents)}`;
-    const pixNote = getPricingCfg().showPixNote ? `Pix com desconto: ${moneyBr(prices.baseCents)}` : "";
+    const displayPrice = moneyBr(prices.cardCents);
     return `
     <article class="product-card${cardMod}">
       ${badgeLine}
@@ -80,7 +79,6 @@
       <h3>${escapeHtml(p.title)}</h3>
       <p class="product-card__desc">${escapeHtml(p.desc)}</p>
       <div class="product-card__price">${escapeHtml(displayPrice)}</div>
-      ${pixNote ? `<p class="product-card__note">${escapeHtml(pixNote)}</p>` : ""}
       ${p.note ? `<p class="product-card__note">${escapeHtml(p.note)}</p>` : ""}
       <div class="product-card__actions">
         <a class="btn btn--primary js-cart-add" href="${escapeAttr(p.href)}" data-checkout-item="${escapeAttr(p.title)}" data-checkout-price="${escapeAttr(displayPrice)}" data-checkout-cents="${escapeAttr(String(prices.cardCents))}" data-checkout-card-cents="${escapeAttr(String(prices.cardCents))}" data-checkout-base-cents="${escapeAttr(String(prices.baseCents))}" data-checkout-image="${imgSrc ? escapeAttr(imgSrc) : ""}" data-grant-type="${p.grantType ? escapeAttr(p.grantType) : ""}" data-grant-tier="${p.grantTier ? escapeAttr(p.grantTier) : ""}" data-grant-vehicle-id="${p.grantVehicleId ? escapeAttr(String(p.grantVehicleId).trim()) : ""}" data-grant-money="${p.grantMoneyAmount != null ? escapeAttr(String(p.grantMoneyAmount)) : ""}" data-grant-xp="${p.grantXpAmount != null ? escapeAttr(String(p.grantXpAmount)) : ""}" data-grant-days="${p.grantDays != null ? escapeAttr(String(p.grantDays)) : ""}">Adicionar ao carrinho</a>
@@ -118,8 +116,7 @@
     const grantVehicleId =
       p.grantVehicleId && String(p.grantVehicleId).trim() !== "" ? String(p.grantVehicleId).trim() : "";
     const prices = resolvePrices(p);
-    const displayPrice = `No cartão: ${moneyBr(prices.cardCents)}`;
-    const pixNote = getPricingCfg().showPixNote ? `Pix com desconto: ${moneyBr(prices.baseCents)}` : "";
+    const displayPrice = moneyBr(prices.cardCents);
     return `
     <article class="product-card product-card--vip">
       <button type="button" class="product-card__vip-trigger" aria-haspopup="dialog" aria-controls="${escapeAttr(dlgId)}">
@@ -127,7 +124,6 @@
         <span class="product-card__vip-trigger-text">
           <span class="product-card__vip-title">${escapeHtml(p.title)}</span>
           <span class="product-card__price product-card__price--vip">${escapeHtml(displayPrice)}</span>
-          ${pixNote ? `<span class="product-card__vip-hint">${escapeHtml(pixNote)}</span>` : ""}
           <span class="product-card__vip-hint">Ver detalhes</span>
         </span>
       </button>
