@@ -156,8 +156,12 @@ function registerPicPayRoutes(app, ctx) {
         amountCents,
         customer: cust.customer,
         clientIp: clientIp(req),
+        description: parsed.meta?.item_name || "Compra Gear UP",
       });
-      picpayPending.savePending(merchantChargeId, parsed.meta, amountCents);
+      const paymentLinkId = charge.paymentLinkId || "";
+      picpayPending.savePending(merchantChargeId, parsed.meta, amountCents, {
+        paymentLinkId: paymentLinkId || undefined,
+      });
       const pix = picpayCheckout.extractPixFromCharge(charge);
       return res.json({
         ok: true,
@@ -166,6 +170,7 @@ function registerPicPayRoutes(app, ctx) {
         chargeStatus: charge.chargeStatus,
         qrCode: pix?.qrCode || "",
         qrCodeBase64: pix?.qrCodeBase64 || "",
+        checkoutLink: pix?.checkoutLink || charge.checkoutLink || "",
         redirectUrl: `${ctx.siteBaseUrl}/pagamento-pix.html?charge=${encodeURIComponent(merchantChargeId)}`,
       });
     } catch (e) {
@@ -184,13 +189,13 @@ function registerPicPayRoutes(app, ctx) {
       return res.status(503).json({ ok: false, error: "PicPay não configurado" });
     }
     try {
-      const charge = await picpayCheckout.getCharge(merchantChargeId);
-      const pix = picpayCheckout.extractPixFromCharge(charge);
       const pending = picpayPending.getPending(merchantChargeId);
-      const paid =
-        String(charge.chargeStatus || "").toUpperCase() === "PAID" ||
-        (Array.isArray(charge.transactions) &&
-          charge.transactions.some((t) => String(t.transactionStatus || "").toUpperCase() === "PAID"));
+      const charge = await picpayCheckout.getCharge(
+        merchantChargeId,
+        pending?.paymentLinkId
+      );
+      const pix = picpayCheckout.extractPixFromCharge(charge);
+      const paid = picpayCheckout.isChargePaid(charge);
 
       if (paid && pending?.metadata) {
         await tryFulfillPicPayCharge(merchantChargeId, pending.metadata, "poll");
@@ -201,9 +206,10 @@ function registerPicPayRoutes(app, ctx) {
         merchantChargeId,
         chargeStatus: charge.chargeStatus,
         paid,
-        amountCents: charge.amount,
+        amountCents: charge.amount ?? pending?.amountCents,
         qrCode: pix?.qrCode || "",
         qrCodeBase64: pix?.qrCodeBase64 || "",
+        checkoutLink: pix?.checkoutLink || charge.checkoutLink || "",
         itemName: pending?.metadata?.item_name || "",
       });
     } catch (e) {
@@ -225,13 +231,32 @@ function registerPicPayRoutes(app, ctx) {
 
     const body = req.body || {};
     const data = body.data && typeof body.data === "object" ? body.data : body;
-    const merchantChargeId =
+    const chargeBlock = data.charge && typeof data.charge === "object" ? data.charge : {};
+    const txBlock = data.transaction && typeof data.transaction === "object" ? data.transaction : {};
+    const paymentLinkId =
+      chargeBlock.paymentLinkId ||
+      chargeBlock.payment_link_id ||
+      data.paymentLinkId ||
+      data.payment_link_id;
+    let merchantChargeId =
       data.merchantChargeId ||
       data.merchant_charge_id ||
+      chargeBlock.referenceId ||
+      chargeBlock.reference_id ||
       body.merchantChargeId ||
       body.merchant_charge_id ||
       body.referenceId ||
       body.reference_id;
+
+    if (paymentLinkId && !merchantChargeId) {
+      const found = picpayPending.findByPaymentLinkId(String(paymentLinkId));
+      if (found) merchantChargeId = found.merchantChargeId;
+    }
+
+    if (!merchantChargeId && paymentLinkId) {
+      merchantChargeId = String(paymentLinkId);
+    }
+
     if (!merchantChargeId) {
       return res.status(400).json({ ok: false, error: "merchantChargeId em falta" });
     }
@@ -239,14 +264,18 @@ function registerPicPayRoutes(app, ctx) {
     console.log(`[picpay] webhook recebido — ${merchantChargeId}`);
 
     try {
-      const webhookPaid = String(data.status || "").toUpperCase() === "PAID";
-      const charge = await picpayCheckout.getCharge(String(merchantChargeId));
-      const paid =
-        webhookPaid || String(charge.chargeStatus || "").toUpperCase() === "PAID";
+      const txStatus = String(txBlock.status || data.status || "").toUpperCase();
+      const webhookPaid = txStatus === "PAID" || txStatus === "PAYED";
+      const pending = picpayPending.getPending(String(merchantChargeId));
+      const charge = await picpayCheckout.getCharge(
+        String(merchantChargeId),
+        pending?.paymentLinkId || paymentLinkId
+      );
+      const paid = webhookPaid || picpayCheckout.isChargePaid(charge);
       if (!paid) {
         return res.json({ received: true, paid: false });
       }
-      let md = picpayPending.getPending(String(merchantChargeId))?.metadata;
+      let md = pending?.metadata;
       if (!md) md = {};
       await tryFulfillPicPayCharge(String(merchantChargeId), md, "webhook");
       return res.json({ received: true, paid: true });

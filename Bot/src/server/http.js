@@ -644,7 +644,7 @@ function startHttpServer(client) {
   });
 
   if (picpayCheckout.isConfigured()) {
-    console.log("[picpay] API configurada (Pix via Gateway)");
+    console.log(`[picpay] API configurada (modo: ${picpayCheckout.getApiMode()})`);
   }
 
   function unauthorized(res) {
@@ -1452,6 +1452,7 @@ function startHttpServer(client) {
       stripe: Boolean(stripeSecretKey),
       stripeWebhook: Boolean(stripeWebhookSecret),
       picpay: picpayCheckout.isConfigured(),
+      picpayMode: picpayCheckout.isConfigured() ? picpayCheckout.getApiMode() : null,
       picpayWebhook: Boolean((process.env.PICPAY_WEBHOOK_TOKEN || "").trim()),
       discordOAuth: Boolean(discordClientSecret && discordClientId),
       robloxGrantsApi: Boolean(robloxApiSecret),

@@ -1,7 +1,31 @@
-const PICPAY_API_BASE = (process.env.PICPAY_API_BASE || "https://checkout-api.picpay.com").replace(/\/$/, "");
+const PICPAY_MODE = String(process.env.PICPAY_API_MODE || "payment-link")
+  .trim()
+  .toLowerCase();
+const DEFAULT_BASE =
+  PICPAY_MODE === "checkout"
+    ? "https://checkout-api.picpay.com"
+    : "https://api.picpay.com";
+const PICPAY_API_BASE = (process.env.PICPAY_API_BASE || DEFAULT_BASE).replace(/\/$/, "");
+const PICPAY_SANDBOX = /^(1|true|yes)$/i.test(String(process.env.PICPAY_SANDBOX || "").trim());
 
 let cachedToken = null;
 let tokenExpiresAt = 0;
+
+function apiPath(path) {
+  if (PICPAY_MODE === "payment-link" && PICPAY_SANDBOX) {
+    return `/sandbox/v1${path}`;
+  }
+  return path;
+}
+
+function formatApiError(prefix, r, data) {
+  const detail =
+    data.message ||
+    data.error ||
+    (Array.isArray(data.errors) ? data.errors.map((e) => e.message || e).join("; ") : null) ||
+    JSON.stringify(data).slice(0, 400);
+  return new Error(`${prefix} ${r.status}: ${detail}`);
+}
 
 /**
  * @returns {Promise<string>}
@@ -26,7 +50,7 @@ async function getAccessToken() {
   });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) {
-    throw new Error(data.message || data.error || `PicPay OAuth ${r.status}`);
+    throw formatApiError("PicPay OAuth", r, data);
   }
   const token = data.access_token || data.accessToken;
   if (!token) throw new Error("PicPay OAuth: resposta sem access_token");
@@ -36,6 +60,23 @@ async function getAccessToken() {
   return token;
 }
 
+async function apiRequest(method, path, body, extraHeaders) {
+  const token = await getAccessToken();
+  const headers = {
+    Accept: "application/json",
+    Authorization: `Bearer ${token}`,
+    ...extraHeaders,
+  };
+  const init = { method, headers };
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+    init.body = JSON.stringify(body);
+  }
+  const r = await fetch(`${PICPAY_API_BASE}${apiPath(path)}`, init);
+  const data = await r.json().catch(() => ({}));
+  return { r, data };
+}
+
 /**
  * @param {object} params
  * @param {string} params.merchantChargeId
@@ -43,71 +84,150 @@ async function getAccessToken() {
  * @param {object} params.customer
  * @param {string} [params.clientIp]
  * @param {number} [params.pixExpirationSeconds]
+ * @param {string} [params.description]
  */
-async function createPixCharge(params) {
-  const token = await getAccessToken();
+async function createCheckoutPixCharge(params) {
   const callerOrigin = (process.env.PICPAY_CALLER_ORIGIN || process.env.SITE_BASE_URL || "").trim();
-  const headers = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-    Authorization: `Bearer ${token}`,
-  };
+  const headers = {};
   if (callerOrigin) headers["caller-origin"] = callerOrigin;
 
-  const body = {
-    paymentSource: "GATEWAY",
-    merchantChargeId: params.merchantChargeId,
-    customer: params.customer,
-    deviceInformation: {
-      ip: params.clientIp || "127.0.0.1",
-    },
-    transactions: [
-      {
-        amount: params.amountCents,
-        pix: {
-          expiration: params.pixExpirationSeconds || 1800,
-        },
+  const { r, data } = await apiRequest(
+    "POST",
+    "/charge/pix",
+    {
+      paymentSource: "GATEWAY",
+      merchantChargeId: params.merchantChargeId,
+      customer: params.customer,
+      deviceInformation: {
+        ip: params.clientIp || "127.0.0.1",
       },
-    ],
-  };
-
-  const r = await fetch(`${PICPAY_API_BASE}/charge/pix`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    const detail =
-      data.message ||
-      data.error ||
-      (Array.isArray(data.errors) ? data.errors.map((e) => e.message || e).join("; ") : null) ||
-      JSON.stringify(data).slice(0, 400);
-    throw new Error(`PicPay charge/pix ${r.status}: ${detail}`);
-  }
+      transactions: [
+        {
+          amount: params.amountCents,
+          pix: {
+            expiration: params.pixExpirationSeconds || 1800,
+          },
+        },
+      ],
+    },
+    headers
+  );
+  if (!r.ok) throw formatApiError("PicPay charge/pix", r, data);
   return data;
 }
 
 /**
- * @param {string} merchantChargeId
+ * Link de Pagamento — credenciais do painel "Link de Pagamento - API".
+ * @param {object} params
  */
-async function getCharge(merchantChargeId) {
-  const token = await getAccessToken();
-  const r = await fetch(
-    `${PICPAY_API_BASE}/charge/${encodeURIComponent(merchantChargeId)}`,
-    {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    }
-  );
-  const data = await r.json().catch(() => ({}));
-  if (!r.ok) {
-    throw new Error(data.message || data.error || `PicPay GET charge ${r.status}`);
+async function createPaymentLinkPixCharge(params) {
+  const body = {
+    amount: params.amountCents,
+    referenceId: params.merchantChargeId,
+    description: String(params.description || "Compra Gear UP").slice(0, 255),
+    paymentMethods: ["PIX"],
+    customer: params.customer,
+  };
+  const expSec = params.pixExpirationSeconds || 1800;
+  if (expSec > 0) {
+    body.expiresAt = new Date(Date.now() + expSec * 1000).toISOString();
   }
-  return data;
+
+  const { r, data } = await apiRequest("POST", "/paymentlink/create", body);
+  if (!r.ok) throw formatApiError("PicPay paymentlink/create", r, data);
+  return normalizePaymentLinkCharge(data, params.amountCents);
+}
+
+/**
+ * @param {object} raw
+ * @param {number} [fallbackAmount]
+ */
+function normalizePaymentLinkCharge(raw, fallbackAmount) {
+  const charge = raw.charge || raw.data?.charge || raw.data || raw;
+  const paymentLinkId =
+    charge.paymentLinkId || charge.payment_link_id || charge.id || raw.paymentLinkId || "";
+  const amount = charge.amount ?? raw.amount ?? fallbackAmount;
+  const qrCode = charge.qrCode || charge.qr_code || "";
+  const checkoutLink = charge.checkoutLink || charge.checkout_link || "";
+  const status = String(charge.status || raw.status || "PENDING").toUpperCase();
+  const transactions = charge.transactions || raw.transactions || [];
+
+  return {
+    apiMode: "payment-link",
+    paymentLinkId: String(paymentLinkId),
+    merchantChargeId: charge.referenceId || charge.reference_id || raw.referenceId || "",
+    chargeStatus: status,
+    amount,
+    qrCode,
+    qrCodeBase64: charge.qrCodeBase64 || charge.qr_code_base64 || "",
+    checkoutLink,
+    transactions,
+  };
+}
+
+/**
+ * @param {object} params
+ */
+async function createPixCharge(params) {
+  if (PICPAY_MODE === "checkout") {
+    return createCheckoutPixCharge(params);
+  }
+  return createPaymentLinkPixCharge(params);
+}
+
+/**
+ * @param {string} merchantChargeId
+ * @param {string} [paymentLinkId]
+ */
+async function getCharge(merchantChargeId, paymentLinkId) {
+  if (PICPAY_MODE === "checkout") {
+    const { r, data } = await apiRequest(
+      "GET",
+      `/charge/${encodeURIComponent(merchantChargeId)}`
+    );
+    if (!r.ok) throw formatApiError("PicPay GET charge", r, data);
+    return data;
+  }
+
+  const id = paymentLinkId || merchantChargeId;
+  const { r, data } = await apiRequest("GET", `/paymentlink/${encodeURIComponent(id)}`);
+  if (!r.ok) throw formatApiError("PicPay GET paymentlink", r, data);
+
+  let normalized = normalizePaymentLinkCharge(data);
+  const paid = isChargePaid(normalized);
+  if (!paid && normalized.paymentLinkId) {
+    try {
+      const tx = await apiRequest(
+        "GET",
+        `/paymentlink/${encodeURIComponent(normalized.paymentLinkId)}/transactions`
+      );
+      if (tx.r.ok) {
+        const txs =
+          tx.data.transactions ||
+          tx.data.data?.transactions ||
+          (Array.isArray(tx.data) ? tx.data : []);
+        normalized = { ...normalized, transactions: txs };
+      }
+    } catch (_) {
+      /* consulta de transações opcional */
+    }
+  }
+  return normalized;
+}
+
+/**
+ * @param {object} charge
+ */
+function isChargePaid(charge) {
+  const status = String(charge.chargeStatus || charge.status || "").toUpperCase();
+  if (status === "PAID" || status === "PAYED" || status === "AUTHORIZED") return true;
+  const txs = charge.transactions;
+  if (!Array.isArray(txs)) return false;
+  return txs.some((t) => {
+    const st = String(t.transactionStatus || t.status || "").toUpperCase();
+    const pt = String(t.paymentType || t.payment_type || "").toUpperCase();
+    return (st === "PAID" || st === "PAYED" || st === "CAPTURED") && (!pt || pt === "PIX");
+  });
 }
 
 /**
@@ -115,15 +235,25 @@ async function getCharge(merchantChargeId) {
  * @param {object} charge
  */
 function extractPixFromCharge(charge) {
-  const txs = charge && charge.transactions;
+  if (!charge) return null;
+  if (charge.qrCode || charge.qrCodeBase64) {
+    return {
+      qrCode: charge.qrCode || "",
+      qrCodeBase64: charge.qrCodeBase64 || "",
+      checkoutLink: charge.checkoutLink || "",
+      transactionStatus: charge.chargeStatus || "",
+    };
+  }
+  const txs = charge.transactions;
   if (!Array.isArray(txs)) return null;
   for (const tx of txs) {
-    const pix = tx && tx.pix;
+    const pix = tx && (tx.pix || (tx.paymentType === "PIX" ? tx : null));
     if (pix && (pix.qrCode || pix.qrCodeBase64)) {
       return {
         qrCode: pix.qrCode || "",
         qrCodeBase64: pix.qrCodeBase64 || "",
-        transactionStatus: tx.transactionStatus || "",
+        checkoutLink: charge.checkoutLink || "",
+        transactionStatus: tx.transactionStatus || tx.status || "",
       };
     }
   }
@@ -134,9 +264,15 @@ function isConfigured() {
   return Boolean((process.env.PICPAY_CLIENT_ID || "").trim() && (process.env.PICPAY_CLIENT_SECRET || "").trim());
 }
 
+function getApiMode() {
+  return PICPAY_MODE;
+}
+
 module.exports = {
   createPixCharge,
   getCharge,
   extractPixFromCharge,
+  isChargePaid,
   isConfigured,
+  getApiMode,
 };

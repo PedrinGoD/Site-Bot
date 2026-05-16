@@ -36,15 +36,30 @@ function persist() {
  * @param {Record<string, string>} metadata
  * @param {number} amountCents
  */
-function savePending(merchantChargeId, metadata, amountCents) {
+function savePending(merchantChargeId, metadata, amountCents, extra) {
   if (!merchantChargeId) return;
   memory.set(merchantChargeId, {
     metadata,
     amountCents,
     createdAt: new Date().toISOString(),
     notified: false,
+    ...(extra && typeof extra === "object" ? extra : {}),
   });
   persist();
+}
+
+/**
+ * @param {string} paymentLinkId
+ */
+function findByPaymentLinkId(paymentLinkId) {
+  const id = String(paymentLinkId || "").trim();
+  if (!id) return null;
+  for (const [merchantChargeId, row] of memory.entries()) {
+    if (row && String(row.paymentLinkId || "") === id) {
+      return { merchantChargeId, ...row };
+    }
+  }
+  return null;
 }
 
 /**
@@ -71,4 +86,5 @@ module.exports = {
   savePending,
   getPending,
   markNotified,
+  findByPaymentLinkId,
 };

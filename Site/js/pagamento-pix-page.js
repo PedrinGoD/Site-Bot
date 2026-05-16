@@ -17,8 +17,10 @@
     const img = document.getElementById("pix-qr-img");
     const ta = document.getElementById("pix-copy-code");
     const copyBtn = document.getElementById("pix-copy-btn");
+    const linkBtn = document.getElementById("pix-open-link");
     const b64 = data.qrCodeBase64 || "";
     const code = data.qrCode || "";
+    const checkoutLink = data.checkoutLink || "";
     if (img && b64) {
       img.src = b64.startsWith("data:") ? b64 : "data:image/png;base64," + b64;
       img.hidden = false;
@@ -28,6 +30,14 @@
       ta.hidden = false;
     }
     if (copyBtn) copyBtn.hidden = !code;
+    if (linkBtn) {
+      if (checkoutLink) {
+        linkBtn.href = checkoutLink;
+        linkBtn.hidden = false;
+      } else {
+        linkBtn.hidden = true;
+      }
+    }
   }
 
   async function poll(chargeId) {

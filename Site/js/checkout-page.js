@@ -273,6 +273,7 @@
               merchantChargeId: data.merchantChargeId,
               qrCode: data.qrCode || "",
               qrCodeBase64: data.qrCodeBase64 || "",
+              checkoutLink: data.checkoutLink || "",
               amountCents: data.amountCents,
             })
           );
