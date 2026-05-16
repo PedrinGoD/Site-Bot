@@ -1798,8 +1798,9 @@ dialog.gear-demo-checkout[open] {
 }
 
 .checkout-note--success {
-  color: #7cffb4;
+  color: #39ff9f !important;
   font-weight: 700;
+  text-shadow: 0 0 14px rgba(57, 255, 159, 0.28);
 }
 
 .checkout-note--error {
@@ -1832,6 +1833,27 @@ dialog.gear-demo-checkout[open] {
   margin: 0.7rem 0 0;
   font-weight: 700;
   line-height: 1.35;
+}
+
+.checkout-total__line {
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.checkout-total__line--coupon,
+.checkout-total__line--pix {
+  font-size: 0.95rem;
+  color: #d5dbe8;
+}
+
+.checkout-total__line--coupon strong,
+.checkout-total__line--pix strong {
+  color: #7cffb4;
+}
+
+.checkout-total__line--final {
+  margin-top: 0.35rem;
+  font-size: 1.02rem;
 }
 
 .checkout-actions {

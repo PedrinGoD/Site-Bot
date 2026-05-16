@@ -24,6 +24,14 @@
     return "R$ " + (Number(cents || 0) / 100).toFixed(2).replace(".", ",");
   }
 
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   function loadState() {
     try {
       const raw = sessionStorage.getItem(CART_KEY);
@@ -224,20 +232,27 @@
       const cardTotals = selectedPaymentMethod === "card" ? t : totalsFor("card");
       const pixTotals = selectedPaymentMethod === "pix" ? t : totalsFor("pix");
       const pixDiscount = Math.max(0, cardTotals.total - pixTotals.total);
-      if (selectedPaymentMethod === "pix") {
-        total.textContent = `Total no Pix: ${moneyBr(t.total)}`;
-      } else {
-        total.textContent = `Total no cartão: ${moneyBr(t.total)}`;
-        if (pixTotals.total < cardTotals.total) {
-          total.textContent += ` (Pix: ${moneyBr(pixTotals.total)})`;
-        }
-      }
+      const lines = [];
       if (t.discount > 0) {
-        total.textContent += ` · Cupom: -${moneyBr(t.discount)}`;
+        lines.push(
+          `<span class="checkout-total__line checkout-total__line--coupon">Cupom ${escapeHtml(
+            couponCode
+          )} (${t.pct}% OFF) aplicado: <strong>-${moneyBr(t.discount)}</strong></span>`
+        );
       }
-      if (pixDiscount > 0 && selectedPaymentMethod !== "card") {
-        total.textContent += ` · Desc. Pix: -${moneyBr(pixDiscount)}`;
+      if (selectedPaymentMethod === "pix" && pixDiscount > 0) {
+        lines.push(
+          `<span class="checkout-total__line checkout-total__line--pix">Desconto Pix aplicado: <strong>-${moneyBr(
+            pixDiscount
+          )}</strong></span>`
+        );
       }
+      lines.push(
+        `<span class="checkout-total__line checkout-total__line--final">Total: <strong>${moneyBr(
+          t.total
+        )}</strong></span>`
+      );
+      total.innerHTML = lines.join("");
     }
     if (couponStatus) {
       couponStatus.classList.remove(
@@ -249,7 +264,7 @@
         couponStatus.textContent = "Sem cupom aplicado.";
         couponStatus.classList.add("checkout-note--muted");
       } else if (couponPreview && !couponPreview.error && t.discount > 0) {
-        couponStatus.textContent = `Cupom ${couponCode} aplicado: -${moneyBr(t.discount)} (${t.pct}% OFF).`;
+        couponStatus.textContent = "Cupom validado e aplicado com sucesso.";
         couponStatus.classList.add("checkout-note--success");
       } else if (couponPreview && couponPreview.error) {
         couponStatus.textContent = `Cupom inválido: ${couponPreview.error}.`;
