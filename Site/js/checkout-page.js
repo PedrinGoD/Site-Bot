@@ -156,6 +156,7 @@
       const cardTotals = totalsFor("card");
       const pixTotals = totalsFor("pix");
       const pixDiscount = Math.max(0, cardTotals.total - pixTotals.total);
+      const couponPendingServerValidation = Boolean(couponCode && t.pct === 0);
       if (selectedPaymentMethod === "pix") {
         total.textContent =
           t.discount > 0
@@ -173,11 +174,14 @@
           total.textContent += ` — no Pix fica ${moneyBr(pixTotals.total)}`;
         }
       }
+      if (couponPendingServerValidation) {
+        total.textContent += " — cupom será validado no pagamento";
+      }
     }
     if (couponStatus) {
       couponStatus.textContent =
         couponCode && t.pct === 0
-          ? "Cupom inválido."
+          ? "Cupom informado. A validação final acontece no pagamento."
           : t.pct > 0
           ? `Cupom ${couponCode} aplicado (${t.pct}% off).`
           : "Sem cupom aplicado.";
