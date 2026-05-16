@@ -70,7 +70,7 @@ function initCommon() {
         <div class="cart-drawer__items" id="gear-cart-drawer-items"></div>
         <div class="cart-drawer__foot">
           <p class="cart-drawer__total" id="gear-cart-drawer-total">Total: R$ 0,00</p>
-          <a class="btn btn--primary" href="checkout.html">Ir para o checkout</a>
+          <a class="btn btn--primary" href="/checkout">Ir para o checkout</a>
         </div>
       </div>
     `;
@@ -220,7 +220,7 @@ function initCommon() {
     const nav = document.querySelector(".site-header .nav");
     if (!nav || nav.querySelector("[data-gear-help-link]")) return;
     const a = document.createElement("a");
-    a.href = "ajuda-entrega.html";
+    a.href = "/ajuda-entrega";
     a.className = "nav__link";
     a.setAttribute("data-gear-help-link", "1");
     a.textContent = "Ajuda";
@@ -243,7 +243,7 @@ function initCommon() {
     p.setAttribute("data-gear-footer-meta", "1");
 
     const aHelp = document.createElement("a");
-    aHelp.href = "ajuda-entrega.html";
+    aHelp.href = "/ajuda-entrega";
     aHelp.textContent = "Não recebi no jogo";
     p.appendChild(aHelp);
 

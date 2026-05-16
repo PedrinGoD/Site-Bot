@@ -29,8 +29,8 @@
   }
 
   function loginUrl(nextPath) {
-    var n = nextPath || "index.html";
-    if (n.indexOf("..") >= 0 || n.indexOf("//") >= 0) n = "index.html";
+    var n = nextPath || "/";
+    if (n.indexOf("..") >= 0 || n.indexOf("//") >= 0) n = "/";
     return getApiBase() + "/auth/discord/login?next=" + encodeURIComponent(n);
   }
 
@@ -117,7 +117,7 @@
     function currentPageName() {
       var path = location.pathname || "";
       var i = path.lastIndexOf("/");
-      return path.slice(i + 1) || "index.html";
+      return path.slice(i + 1) || "/";
     }
 
     var cta = nav.querySelector(".nav__cta");

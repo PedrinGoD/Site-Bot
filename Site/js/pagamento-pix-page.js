@@ -118,7 +118,7 @@
           }
           if (doneLink) doneLink.hidden = false;
           setTimeout(function () {
-            window.location.href = "pagamento-ok.html?picpay=" + encodeURIComponent(chargeId);
+            window.location.href = "/pagamento-ok?picpay=" + encodeURIComponent(chargeId);
           }, 1500);
           return;
         }

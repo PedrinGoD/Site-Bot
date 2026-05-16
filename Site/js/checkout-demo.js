@@ -1,6 +1,6 @@
 /**
  * Carrinho no frontend (sem modal): adiciona produtos e salva em sessionStorage.
- * A finalização ocorre em checkout.html.
+ * A finalização ocorre em /checkout.
  */
 (function () {
   const CART_KEY = "gear_cart_items_v1";
@@ -83,9 +83,9 @@
 
   function checkoutPath() {
     try {
-      return new URL("checkout.html", window.location.href).href;
+      return new URL("/checkout", window.location.href).href;
     } catch (_) {
-      return "checkout.html";
+      return "/checkout";
     }
   }
 

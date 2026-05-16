@@ -414,7 +414,7 @@
     if (!token) {
       if (confirm("Para finalizar, você precisa logar com Discord. Entrar agora?")) {
         const apiBase = String(stripeCfg.apiBase || "http://127.0.0.1:3847").replace(/\/$/, "");
-        window.location.href = `${apiBase}/auth/discord/login?next=${encodeURIComponent("checkout.html")}`;
+        window.location.href = `${apiBase}/auth/discord/login?next=${encodeURIComponent("checkout")}`;
       }
       return;
     }
@@ -496,7 +496,7 @@
         saveState();
         window.location.href =
           data.redirectUrl ||
-          "pagamento-pix.html?charge=" + encodeURIComponent(data.merchantChargeId);
+          "/pagamento-pix?charge=" + encodeURIComponent(data.merchantChargeId);
         return;
       } catch (e) {
         if (errEl) {
@@ -606,7 +606,7 @@
       dBtn.addEventListener("click", function () {
         const stripeCfg = getStripeCfg();
         const apiBase = String((stripeCfg && stripeCfg.apiBase) || "http://127.0.0.1:3847").replace(/\/$/, "");
-        window.location.href = `${apiBase}/auth/discord/login?next=${encodeURIComponent("checkout.html")}`;
+        window.location.href = `${apiBase}/auth/discord/login?next=${encodeURIComponent("checkout")}`;
       });
     }
     const cp = document.getElementById("checkout-coupon-apply");

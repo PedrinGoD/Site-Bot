@@ -764,11 +764,11 @@ function startHttpServer(client) {
   }
 
   function safeNextPath(s) {
-    if (typeof s !== "string") return "index.html";
+    if (typeof s !== "string") return "";
     let u = s.trim();
-    if (!u || u.includes("..") || u.includes("//")) return "index.html";
+    if (!u || u.includes("..") || u.includes("//")) return "";
     if (u.startsWith("/")) u = u.slice(1);
-    if (!/^[a-zA-Z0-9._?=&%-]+$/.test(u)) return "index.html";
+    if (!/^[a-zA-Z0-9._?=&%-]+$/.test(u)) return "";
     return u.slice(0, 120);
   }
 
@@ -1165,7 +1165,7 @@ function startHttpServer(client) {
         .status(503)
         .send("Defina DISCORD_CLIENT_SECRET e CLIENT_ID no .env para login com Discord.");
     }
-    const nextRaw = typeof req.query.next === "string" ? req.query.next : "index.html";
+    const nextRaw = typeof req.query.next === "string" ? req.query.next : "";
     const state = signOAuthState({ next: safeNextPath(nextRaw) }, sessionSigningSecret);
     const url =
       "https://discord.com/api/oauth2/authorize?client_id=" +
@@ -1202,9 +1202,9 @@ function startHttpServer(client) {
       const tok = await exchangeDiscordOAuthCode(code);
       const user = await discordFetchMe(tok.access_token);
       const token = signDiscordSession(user, sessionSigningSecret);
-      const next = safeNextPath(state.next || "index.html");
+      const next = safeNextPath(state.next || "");
       const hash = "#token=" + encodeURIComponent(token);
-      res.redirect(302, `${siteBaseUrl}/auth-callback.html?next=${encodeURIComponent(next)}${hash}`);
+      res.redirect(302, `${siteBaseUrl}/auth-callback?next=${encodeURIComponent(next)}${hash}`);
     } catch (e) {
       console.error("[auth] callback:", e);
       res.status(500).send(String(e.message || e));

@@ -8,8 +8,8 @@
       (function () {
         var STORAGE = "gear_discord_session_token";
         var p = new URLSearchParams(location.search);
-        var next = p.get("next") || "index.html";
-        if (next.indexOf("..") >= 0 || next.indexOf("//") >= 0) next = "index.html";
+        var next = p.get("next") || "/";
+        if (next.indexOf("..") >= 0 || next.indexOf("//") >= 0) next = "/";
         var h = location.hash || "";
         if (h.indexOf("token=") >= 0) {
           var m = h.match(/^#token=(.+)$/);
@@ -19,7 +19,7 @@
             } catch (e) {}
           }
         }
-        history.replaceState(null, "", "auth-callback.html");
+        history.replaceState(null, "", "/auth-callback");
         location.replace(next);
       })();
     </script>
