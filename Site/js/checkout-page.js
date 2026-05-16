@@ -225,34 +225,38 @@
       const pixTotals = selectedPaymentMethod === "pix" ? t : totalsFor("pix");
       const pixDiscount = Math.max(0, cardTotals.total - pixTotals.total);
       if (selectedPaymentMethod === "pix") {
-        total.textContent =
-          t.discount > 0
-            ? `Total no Pix: ${moneyBr(t.total)} — cupom ${t.pct}% aplicado`
-            : `Total no Pix: ${moneyBr(t.total)}`;
-        if (pixDiscount > 0) {
-          total.textContent += ` (Desconto Pix aplicado: ${moneyBr(pixDiscount)})`;
-        }
+        total.textContent = `Total no Pix: ${moneyBr(t.total)}`;
       } else {
-        total.textContent =
-          t.discount > 0
-            ? `Total no cartão: ${moneyBr(t.total)} — cupom ${t.pct}% aplicado`
-            : `Total no cartão: ${moneyBr(t.total)}`;
+        total.textContent = `Total no cartão: ${moneyBr(t.total)}`;
         if (pixTotals.total < cardTotals.total) {
-          total.textContent += ` — no Pix fica ${moneyBr(pixTotals.total)}`;
+          total.textContent += ` (Pix: ${moneyBr(pixTotals.total)})`;
         }
+      }
+      if (t.discount > 0) {
+        total.textContent += ` · Cupom: -${moneyBr(t.discount)}`;
+      }
+      if (pixDiscount > 0 && selectedPaymentMethod !== "card") {
+        total.textContent += ` · Desc. Pix: -${moneyBr(pixDiscount)}`;
       }
     }
     if (couponStatus) {
+      couponStatus.classList.remove(
+        "checkout-note--success",
+        "checkout-note--error",
+        "checkout-note--muted"
+      );
       if (!couponCode) {
         couponStatus.textContent = "Sem cupom aplicado.";
+        couponStatus.classList.add("checkout-note--muted");
       } else if (couponPreview && !couponPreview.error && t.discount > 0) {
-        couponStatus.textContent = `Cupom ${couponCode} aplicado (${t.pct}% off) — desconto ${moneyBr(
-          t.discount
-        )}.`;
+        couponStatus.textContent = `Cupom ${couponCode} aplicado: -${moneyBr(t.discount)} (${t.pct}% OFF).`;
+        couponStatus.classList.add("checkout-note--success");
       } else if (couponPreview && couponPreview.error) {
         couponStatus.textContent = `Cupom inválido: ${couponPreview.error}.`;
+        couponStatus.classList.add("checkout-note--error");
       } else {
         couponStatus.textContent = "Validando cupom...";
+        couponStatus.classList.add("checkout-note--muted");
       }
     }
     const cInp = document.getElementById("checkout-coupon");
