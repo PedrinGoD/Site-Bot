@@ -1,6 +1,7 @@
 (function () {
   const CART_KEY = "gear_cart_items_v1";
   const COUPON_KEY = "gear_cart_coupon_v1";
+  const PIX_PAYER_KEY = "gear_pix_payer_v1";
   let cartItems = [];
   let robloxConfirmedUserId = null;
   let couponCode = "";
@@ -51,6 +52,72 @@
       window.dispatchEvent(new CustomEvent("gear-cart-updated"));
     } catch (_) {
       /* ignore */
+    }
+  }
+
+  function normalizeCpf(raw) {
+    return String(raw || "").replace(/\D/g, "").slice(0, 11);
+  }
+
+  function savePixPayerToBrowser(email, cpf) {
+    try {
+      const payload = {
+        email: String(email || "").trim().slice(0, 160),
+        cpf: normalizeCpf(cpf),
+      };
+      localStorage.setItem(PIX_PAYER_KEY, JSON.stringify(payload));
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  function loadPixPayerFromBrowser() {
+    try {
+      const raw = localStorage.getItem(PIX_PAYER_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return {
+        email: String(parsed && parsed.email ? parsed.email : "").trim(),
+        cpf: normalizeCpf(parsed && parsed.cpf ? parsed.cpf : ""),
+      };
+    } catch (_) {
+      return { email: "", cpf: "" };
+    }
+  }
+
+  function hydratePixPayerInputs() {
+    const emailEl = document.getElementById("checkout-pix-email");
+    const cpfEl = document.getElementById("checkout-pix-cpf");
+    if (!emailEl && !cpfEl) return;
+
+    const saved = loadPixPayerFromBrowser();
+    if (emailEl && !String(emailEl.value || "").trim() && saved.email) {
+      emailEl.value = saved.email;
+    }
+    if (cpfEl && !String(cpfEl.value || "").trim() && saved.cpf) {
+      cpfEl.value = saved.cpf;
+    }
+  }
+
+  function wirePixPayerPersistence() {
+    const emailEl = document.getElementById("checkout-pix-email");
+    const cpfEl = document.getElementById("checkout-pix-cpf");
+    if (!emailEl && !cpfEl) return;
+
+    const persist = function () {
+      savePixPayerToBrowser(emailEl && emailEl.value, cpfEl && cpfEl.value);
+    };
+
+    if (emailEl) {
+      emailEl.addEventListener("blur", persist);
+      emailEl.addEventListener("change", persist);
+    }
+    if (cpfEl) {
+      cpfEl.addEventListener("blur", persist);
+      cpfEl.addEventListener("change", persist);
+      cpfEl.addEventListener("input", function () {
+        const clean = normalizeCpf(cpfEl.value);
+        if (cpfEl.value !== clean) cpfEl.value = clean;
+      });
     }
   }
 
@@ -395,7 +462,8 @@
       const emailEl = document.getElementById("checkout-pix-email");
       const cpfEl = document.getElementById("checkout-pix-cpf");
       payload.customerEmail = String((emailEl && emailEl.value) || "").trim();
-      payload.customerDocument = String((cpfEl && cpfEl.value) || "").replace(/\D/g, "");
+      payload.customerDocument = normalizeCpf((cpfEl && cpfEl.value) || "");
+      savePixPayerToBrowser(payload.customerEmail, payload.customerDocument);
       const me = await refreshDiscordStatus();
       if (me) {
         payload.customerName = me.global_name || me.username || "Cliente";
@@ -531,6 +599,8 @@
 
   function wireUi() {
     wirePaymentMethodOptions();
+    hydratePixPayerInputs();
+    wirePixPayerPersistence();
     const dBtn = document.getElementById("checkout-discord-login");
     if (dBtn) {
       dBtn.addEventListener("click", function () {
