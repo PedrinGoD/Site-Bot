@@ -197,12 +197,13 @@ async function processNitroBoostStart(member, reason = "evento") {
       member,
       cfg,
       "⚠️ Booster sem vínculo Roblox",
-      `<@${discordUserId}> impulsionou o servidor, mas não possui Roblox ID vinculado.\nUse \`/booster vincular\` para liberar: ${rewardToText(reward)}.`
+      `<@${discordUserId}> impulsionou o servidor, mas não possui Roblox ID vinculado.\nUse o botão **Vincular Roblox** no painel booster para liberar: ${rewardToText(reward)}.`
     );
     await tryDm(
       member,
-      `Obrigado por impulsionar o servidor! Para receber sua recompensa no jogo (${rewardToText(reward)}), use no servidor:\n` +
-        "`/booster vincular` e informe seu usuário/ID Roblox."
+      `Obrigado por impulsionar o servidor! Para receber sua recompensa no jogo (${rewardToText(
+        reward
+      )}), use no servidor o painel booster: primeiro **Vincular Roblox** e depois **Resgatar recompensa**.`
     );
     await sendNitroLinkPrompt(member, cfg, rewardToText(reward));
     return { ok: true, missingLink: true };

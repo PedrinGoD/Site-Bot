@@ -65,7 +65,10 @@ function getLinkedRobloxUserId(guildId, discordUserId) {
 function hasRewardForBoost(guildId, discordUserId, boostKey) {
   if (!boostKey) return false;
   const row = getUserState(guildId, discordUserId);
-  return String(row.lastRewardBoostKey || "") === String(boostKey);
+  const sameBoost = String(row.lastRewardBoostKey || "") === String(boostKey);
+  if (!sameBoost) return false;
+  const refs = Array.isArray(row.lastGrantRefs) ? row.lastGrantRefs : [];
+  return refs.length > 0;
 }
 
 function markRewardedForBoost(guildId, discordUserId, boostKey, grantRefs) {
