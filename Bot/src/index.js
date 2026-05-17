@@ -13,6 +13,7 @@ const {
 } = require("discord.js");
 const { startHttpServer } = require("./server/http");
 const guildConfig = require("./lib/guildConfig");
+const { processNitroBoostStart } = require("./lib/boosterRewards");
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -194,6 +195,18 @@ client.on("guildMemberAdd", async (member) => {
     }
   } catch (e) {
     console.error("[verify] erro ao aplicar cargo visitante:", e);
+  }
+});
+
+client.on("guildMemberUpdate", async (oldMember, newMember) => {
+  try {
+    if (newMember.user?.bot) return;
+    const startedBoost =
+      !oldMember.premiumSinceTimestamp && Boolean(newMember.premiumSinceTimestamp);
+    if (!startedBoost) return;
+    await processNitroBoostStart(newMember, "guildMemberUpdate");
+  } catch (e) {
+    console.error("[nitro] erro no guildMemberUpdate:", e);
   }
 });
 

@@ -8,6 +8,7 @@ const {
   ButtonStyle,
 } = require("discord.js");
 const guildConfig = require("../lib/guildConfig");
+const { normalizeVipTier, parseRewardConfig, rewardToText } = require("../lib/boosterRewards");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -53,6 +54,48 @@ module.exports = {
             .setDescription("Canal de texto")
             .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
             .setRequired(true)
+        )
+        .addRoleOption((o) =>
+          o
+            .setName("cargo_booster")
+            .setDescription("Cargo personalizado de Booster (opcional)")
+            .setRequired(false)
+        )
+        .addStringOption((o) =>
+          o
+            .setName("vip")
+            .setDescription("Tier VIP da recompensa Nitro (opcional)")
+            .setRequired(false)
+            .addChoices(
+              { name: "Bronze", value: "Bronze" },
+              { name: "Gold", value: "Gold" },
+              { name: "Diamante", value: "Diamante" },
+              { name: "Sem VIP", value: "none" }
+            )
+        )
+        .addIntegerOption((o) =>
+          o
+            .setName("dias_vip")
+            .setDescription("Dias de VIP por boost (opcional)")
+            .setRequired(false)
+            .setMinValue(0)
+            .setMaxValue(3650)
+        )
+        .addIntegerOption((o) =>
+          o
+            .setName("dinheiro")
+            .setDescription("Dinheiro in-game por boost (opcional)")
+            .setRequired(false)
+            .setMinValue(0)
+            .setMaxValue(2000000000)
+        )
+        .addIntegerOption((o) =>
+          o
+            .setName("xp")
+            .setDescription("XP por boost (opcional)")
+            .setRequired(false)
+            .setMinValue(0)
+            .setMaxValue(2000000000)
         )
     )
     .addSubcommand((sc) =>
@@ -128,10 +171,37 @@ module.exports = {
 
     if (sub === "nitro") {
       const ch = interaction.options.getChannel("canal", true);
-      guildConfig.update(gid, { nitroLogChannelId: ch.id });
+      const patch = { nitroLogChannelId: ch.id };
+
+      const role = interaction.options.getRole("cargo_booster");
+      if (role) patch.boosterRoleId = role.id;
+
+      const vipOpt = interaction.options.getString("vip");
+      if (vipOpt != null) {
+        patch.nitroRewardVipTier = vipOpt === "none" ? "" : normalizeVipTier(vipOpt);
+      }
+
+      const vipDays = interaction.options.getInteger("dias_vip");
+      if (vipDays != null) patch.nitroRewardVipDays = vipDays;
+
+      const money = interaction.options.getInteger("dinheiro");
+      if (money != null) patch.nitroRewardMoney = money;
+
+      const xp = interaction.options.getInteger("xp");
+      if (xp != null) patch.nitroRewardXp = xp;
+
+      guildConfig.update(gid, patch);
+      const updatedCfg = guildConfig.get(gid);
+      const reward = parseRewardConfig(updatedCfg);
+      const boosterRoleLine = updatedCfg.boosterRoleId
+        ? `\n• Cargo Booster: <@&${updatedCfg.boosterRoleId}>`
+        : "\n• Cargo Booster: não configurado";
       await interaction.reply({
         ephemeral: true,
-        content: `✅ Log Nitro/eventos: ${ch}.`,
+        content:
+          `✅ Log Nitro/eventos: ${ch}.${boosterRoleLine}\n` +
+          `• Recompensa Nitro: ${rewardToText(reward)}\n` +
+          "Use `/booster vincular` para os jogadores vincularem o Roblox.",
       });
       return;
     }
@@ -190,6 +260,7 @@ module.exports = {
 
     if (sub === "ver") {
       const c = guildConfig.get(gid);
+      const nitroReward = parseRewardConfig(c);
       const embed = new EmbedBuilder()
         .setTitle("Configuração deste servidor")
         .addFields(
@@ -207,9 +278,10 @@ module.exports = {
           },
           {
             name: "Nitro / extras",
-            value: c.nitroLogChannelId
-              ? `<#${c.nitroLogChannelId}>`
-              : "Não configurado (`/setup nitro`)",
+            value:
+              (c.nitroLogChannelId ? `Canal: <#${c.nitroLogChannelId}>` : "Canal: não configurado") +
+              `\nCargo Booster: ${c.boosterRoleId ? `<@&${c.boosterRoleId}>` : "não configurado"}` +
+              `\nRecompensa: ${rewardToText(nitroReward)}`,
           },
           {
             name: "Log detalhado (staff / Stripe)",
