@@ -1,5 +1,23 @@
 function initCommon() {
   const CART_KEY = "gear_cart_items_v1";
+  const cfgSite = typeof window.GEAR_SITE === "object" && window.GEAR_SITE !== null ? window.GEAR_SITE : {};
+
+  function enforceCanonicalOrigin() {
+    const canonical = String(cfgSite.canonicalOrigin || "").trim().replace(/\/$/, "");
+    if (!canonical || typeof window === "undefined") return;
+    if (!/^https?:\/\//i.test(canonical)) return;
+    if (/^localhost$/i.test(window.location.hostname) || window.location.hostname === "127.0.0.1") return;
+    try {
+      const target = new URL(canonical);
+      if (window.location.origin === target.origin) return;
+      const url = `${target.origin}${window.location.pathname}${window.location.search}${window.location.hash}`;
+      window.location.replace(url);
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  enforceCanonicalOrigin();
 
   function moneyBr(cents) {
     return "R$ " + (Number(cents || 0) / 100).toFixed(2).replace(".", ",");
@@ -235,8 +253,7 @@ function initCommon() {
   function injectFooterMeta() {
     const footer = document.querySelector(".site-footer");
     if (!footer || footer.querySelector("[data-gear-footer-meta]")) return;
-    const cfg = typeof window.GEAR_SITE === "object" && window.GEAR_SITE !== null ? window.GEAR_SITE : {};
-    const discord = String(cfg.supportDiscordUrl || "").trim();
+    const discord = String(cfgSite.supportDiscordUrl || "").trim();
 
     const p = document.createElement("p");
     p.className = "footer__meta";
