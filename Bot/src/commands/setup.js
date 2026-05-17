@@ -151,6 +151,8 @@ module.exports = {
     }
 
     if (sub === "verificacao") {
+      await interaction.deferReply({ ephemeral: true });
+
       const ch = interaction.options.getChannel("canal", true);
       const visitante = interaction.options.getRole("visitante", true);
       const jogador = interaction.options.getRole("jogador", true);
@@ -177,8 +179,7 @@ module.exports = {
         verificationMessageId: msg.id,
       });
 
-      await interaction.reply({
-        ephemeral: true,
+      await interaction.editReply({
         content:
           `✅ Verificação configurada em ${ch}.\n` +
           `• Cargo inicial: <@&${visitante.id}>\n` +
