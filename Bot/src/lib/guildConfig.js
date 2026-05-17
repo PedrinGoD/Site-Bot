@@ -14,7 +14,17 @@ function ensureFile() {
 }
 
 /**
- * @returns {Record<string, { ticketCategoryId?: string, staffRoleId?: string, salesLogChannelId?: string, nitroLogChannelId?: string, fullTransactionLogChannelId?: string }>}
+ * @returns {Record<string, {
+ *  ticketCategoryId?: string,
+ *  staffRoleId?: string,
+ *  salesLogChannelId?: string,
+ *  nitroLogChannelId?: string,
+ *  fullTransactionLogChannelId?: string,
+ *  verificationChannelId?: string,
+ *  visitorRoleId?: string,
+ *  playerRoleId?: string,
+ *  verificationMessageId?: string
+ * }>}
  */
 function loadAll() {
   ensureFile();

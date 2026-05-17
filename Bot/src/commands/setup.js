@@ -3,6 +3,9 @@ const {
   PermissionFlagsBits,
   ChannelType,
   EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } = require("discord.js");
 const guildConfig = require("../lib/guildConfig");
 
@@ -67,6 +70,30 @@ module.exports = {
         )
     )
     .addSubcommand((sc) =>
+      sc
+        .setName("verificacao")
+        .setDescription("Configura canal e cargos da verificação (Visitante -> Jogador)")
+        .addChannelOption((o) =>
+          o
+            .setName("canal")
+            .setDescription("Canal onde ficará a mensagem de verificação")
+            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+            .setRequired(true)
+        )
+        .addRoleOption((o) =>
+          o
+            .setName("visitante")
+            .setDescription("Cargo inicial aplicado quando o usuário entra")
+            .setRequired(true)
+        )
+        .addRoleOption((o) =>
+          o
+            .setName("jogador")
+            .setDescription("Cargo após concluir verificação")
+            .setRequired(true)
+        )
+    )
+    .addSubcommand((sc) =>
       sc.setName("ver").setDescription("Mostra o que já foi configurado aqui")
     )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
@@ -123,6 +150,43 @@ module.exports = {
       return;
     }
 
+    if (sub === "verificacao") {
+      const ch = interaction.options.getChannel("canal", true);
+      const visitante = interaction.options.getRole("visitante", true);
+      const jogador = interaction.options.getRole("jogador", true);
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("verify_accept")
+          .setStyle(ButtonStyle.Success)
+          .setEmoji("✅")
+          .setLabel("Verificar acesso")
+      );
+
+      const msg = await ch.send({
+        content:
+          "## Verificação de acesso\n" +
+          "Clique no botão abaixo para confirmar e liberar seu acesso aos canais do servidor.",
+        components: [row],
+      });
+
+      guildConfig.update(gid, {
+        verificationChannelId: ch.id,
+        visitorRoleId: visitante.id,
+        playerRoleId: jogador.id,
+        verificationMessageId: msg.id,
+      });
+
+      await interaction.reply({
+        ephemeral: true,
+        content:
+          `✅ Verificação configurada em ${ch}.\n` +
+          `• Cargo inicial: <@&${visitante.id}>\n` +
+          `• Cargo liberado: <@&${jogador.id}>`,
+      });
+      return;
+    }
+
     if (sub === "ver") {
       const c = guildConfig.get(gid);
       const embed = new EmbedBuilder()
@@ -151,6 +215,13 @@ module.exports = {
             value: c.fullTransactionLogChannelId
               ? `<#${c.fullTransactionLogChannelId}>`
               : "Não configurado (`/setup log_detalhado`) — opcional",
+          },
+          {
+            name: "Verificação",
+            value:
+              c.verificationChannelId && c.visitorRoleId && c.playerRoleId
+                ? `Canal: <#${c.verificationChannelId}>\nVisitante: <@&${c.visitorRoleId}>\nJogador: <@&${c.playerRoleId}>`
+                : "Não configurado (`/setup verificacao`)",
           }
         );
       await interaction.reply({ ephemeral: true, embeds: [embed] });

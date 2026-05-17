@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const { Client, Collection, GatewayIntentBits } = require("discord.js");
 const { startHttpServer } = require("./server/http");
+const guildConfig = require("./lib/guildConfig");
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -11,7 +12,7 @@ if (!token) {
 }
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
 });
 
 /** @type {Collection<string, object>} */
@@ -53,6 +54,47 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     if (interaction.isButton()) {
+      if (interaction.customId === "verify_accept") {
+        const cfg = guildConfig.get(interaction.guildId);
+        if (!cfg.visitorRoleId || !cfg.playerRoleId) {
+          await interaction.reply({
+            ephemeral: true,
+            content: "❌ Verificação não configurada. Um admin deve usar `/setup verificacao`.",
+          });
+          return;
+        }
+
+        const member = await interaction.guild.members.fetch(interaction.user.id);
+        if (!member || !member.roles) {
+          await interaction.reply({
+            ephemeral: true,
+            content: "❌ Não consegui identificar seu membro no servidor.",
+          });
+          return;
+        }
+
+        try {
+          if (!member.roles.cache.has(cfg.playerRoleId)) {
+            await member.roles.add(cfg.playerRoleId, "Verificação concluída");
+          }
+          if (member.roles.cache.has(cfg.visitorRoleId)) {
+            await member.roles.remove(cfg.visitorRoleId, "Verificação concluída");
+          }
+          await interaction.reply({
+            ephemeral: true,
+            content: "✅ Verificação concluída! Seu acesso foi liberado.",
+          });
+        } catch (e) {
+          console.error("[verify] erro ao trocar cargos:", e);
+          await interaction.reply({
+            ephemeral: true,
+            content:
+              "❌ Não consegui atualizar seus cargos. Verifique se o cargo do bot está acima dos cargos de Visitante/Jogador.",
+          });
+        }
+        return;
+      }
+
       const ticket = client.commands.get("ticket");
       if (interaction.customId.startsWith("t_ab:") && ticket?.handleOpenButton) {
         await ticket.handleOpenButton(interaction);
@@ -80,6 +122,20 @@ client.on("interactionCreate", async (interaction) => {
     } else {
       await interaction.reply(msg).catch(() => {});
     }
+  }
+});
+
+client.on("guildMemberAdd", async (member) => {
+  try {
+    const cfg = guildConfig.get(member.guild.id);
+    if (!cfg.visitorRoleId) return;
+    if (member.user.bot) return;
+
+    if (!member.roles.cache.has(cfg.visitorRoleId)) {
+      await member.roles.add(cfg.visitorRoleId, "Cargo inicial de visitante");
+    }
+  } catch (e) {
+    console.error("[verify] erro ao aplicar cargo visitante:", e);
   }
 });
 
