@@ -57,6 +57,19 @@ function startHttpServer(client) {
     return "";
   }
 
+  /** Normaliza ID de cargo Discord (aspas, espaços, menção tipo <@&123456789012345678>). */
+  function normalizeDiscordRoleId(raw) {
+    if (raw == null) return "";
+    let s = String(raw).trim();
+    if (!s) return "";
+    s = s.replace(/^[\s"'`]+|[\s"'`]+$/g, "");
+    const mention = s.match(/^<@&(\d{17,22})>$/);
+    if (mention) return mention[1];
+    const digits = s.replace(/\D/g, "");
+    if (digits.length >= 17 && digits.length <= 22) return digits;
+    return "";
+  }
+
   /**
    * Lido em cada uso — Render injeta variáveis no processo (não confundir .env local com o painel do host).
    * Aliases: GEAR_SALES_LOG_CHANNEL_ID, DISCORD_SALES_CHANNEL_ID.
@@ -78,6 +91,15 @@ function startHttpServer(client) {
     const keys = ["NITRO_LOG_CHANNEL_ID", "GEAR_NITRO_LOG_CHANNEL_ID"];
     for (const k of keys) {
       const id = normalizeDiscordChannelId(process.env[k]);
+      if (id) return id;
+    }
+    return "";
+  }
+
+  function getPurchaseVipRoleIdFromEnv() {
+    const keys = ["PURCHASE_VIP_ROLE_ID", "GEAR_PURCHASE_VIP_ROLE_ID", "SALES_VIP_ROLE_ID"];
+    for (const k of keys) {
+      const id = normalizeDiscordRoleId(process.env[k]);
       if (id) return id;
     }
     return "";
@@ -189,12 +211,28 @@ function startHttpServer(client) {
     }
 
     const cfg = guildConfig.get(guildId);
+    const purchaseVipRoleId = normalizeDiscordRoleId(cfg.purchaseVipRoleId) || getPurchaseVipRoleIdFromEnv();
     const envSales = getSalesLogChannelIdFromEnv();
     const envNitro = getNitroLogChannelIdFromEnv();
     const channelId =
       kind === "nitro"
         ? cfg.nitroLogChannelId || envNitro || cfg.salesLogChannelId || envSales
         : cfg.salesLogChannelId || envSales;
+
+    if (!isDemo && kind === "sale" && purchaseVipRoleId) {
+      try {
+        const guild = await client.guilds.fetch(guildId);
+        if (guild) {
+          const member = await guild.members.fetch(discordUserId).catch(() => null);
+          if (member && !member.roles.cache.has(purchaseVipRoleId)) {
+            await member.roles.add(purchaseVipRoleId, "Compra confirmada no site");
+            console.log(`[discord] cargo VIP de compra aplicado: user=${discordUserId} role=${purchaseVipRoleId}`);
+          }
+        }
+      } catch (e) {
+        console.error("[discord] erro ao aplicar cargo VIP de compra:", e.message || e);
+      }
+    }
 
     if (!channelId) {
       throw Object.assign(

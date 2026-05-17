@@ -18,6 +18,7 @@ function ensureFile() {
  *  ticketCategoryId?: string,
  *  staffRoleId?: string,
  *  salesLogChannelId?: string,
+ *  purchaseVipRoleId?: string,
  *  nitroLogChannelId?: string,
  *  boosterRoleId?: string,
  *  nitroRewardVipTier?: "Bronze"|"Gold"|"Diamante"|string,

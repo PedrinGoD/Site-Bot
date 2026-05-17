@@ -82,6 +82,12 @@ module.exports = {
             .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
             .setRequired(true)
         )
+        .addRoleOption((o) =>
+          o
+            .setName("cargo_vip_compra")
+            .setDescription("Cargo dado automaticamente após compra confirmada (opcional)")
+            .setRequired(false)
+        )
     )
     .addSubcommand((sc) =>
       sc
@@ -200,10 +206,20 @@ module.exports = {
 
     if (sub === "vendas") {
       const ch = interaction.options.getChannel("canal", true);
-      guildConfig.update(gid, { salesLogChannelId: ch.id });
+      const vipRole = interaction.options.getRole("cargo_vip_compra");
+      guildConfig.update(gid, {
+        salesLogChannelId: ch.id,
+        ...(vipRole ? { purchaseVipRoleId: vipRole.id } : {}),
+      });
+      const cfg = guildConfig.get(gid);
       await interaction.reply({
         ephemeral: true,
-        content: `✅ Log de vendas: ${ch}. O site deve chamar o webhook HTTP (veja .env.example).`,
+        content:
+          `✅ Log de vendas: ${ch}.\n` +
+          `• Cargo VIP por compra: ${
+            cfg.purchaseVipRoleId ? `<@&${cfg.purchaseVipRoleId}>` : "não configurado"
+          }\n` +
+          "O site deve chamar o webhook HTTP (veja .env.example).",
       });
       return;
     }
@@ -339,9 +355,11 @@ module.exports = {
           },
           {
             name: "Vendas (site)",
-            value: c.salesLogChannelId
-              ? `<#${c.salesLogChannelId}>`
-              : "Não configurado (`/setup vendas`)",
+            value:
+              (c.salesLogChannelId ? `Canal: <#${c.salesLogChannelId}>` : "Canal: não configurado") +
+              `\nCargo VIP por compra: ${
+                c.purchaseVipRoleId ? `<@&${c.purchaseVipRoleId}>` : "não configurado"
+              }`,
           },
           {
             name: "Nitro / extras",
