@@ -83,6 +83,16 @@ function markRewardedForBoost(guildId, discordUserId, boostKey, grantRefs) {
   saveAll(all);
 }
 
+function clearRewardMark(guildId, discordUserId) {
+  const all = loadAll();
+  const row = ensureGuildAndUser(all, guildId, discordUserId);
+  delete row.lastRewardBoostKey;
+  delete row.lastRewardAt;
+  delete row.lastGrantRefs;
+  row.updatedAt = Date.now();
+  saveAll(all);
+}
+
 module.exports = {
   getUserState,
   setLinkedRobloxUserId,
@@ -90,4 +100,5 @@ module.exports = {
   getLinkedRobloxUserId,
   hasRewardForBoost,
   markRewardedForBoost,
+  clearRewardMark,
 };

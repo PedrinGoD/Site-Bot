@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const boosterState = require("../lib/boosterRewardsState");
 const guildConfig = require("../lib/guildConfig");
 const { resolveRobloxUserId } = require("../lib/resolveRobloxUser");
@@ -24,7 +24,18 @@ module.exports = {
         )
     )
     .addSubcommand((sc) => sc.setName("resgatar").setDescription("Resgata sua recompensa atual de Nitro"))
-    .addSubcommand((sc) => sc.setName("status").setDescription("Mostra seu vínculo e status de recompensa")),
+    .addSubcommand((sc) => sc.setName("status").setDescription("Mostra seu vínculo e status de recompensa"))
+    .addSubcommand((sc) =>
+      sc
+        .setName("forcar_resgate")
+        .setDescription("STAFF: força reprocessamento do resgate de um booster")
+        .addUserOption((o) =>
+          o
+            .setName("usuario")
+            .setDescription("Usuário que está impulsionando e precisa reprocessar")
+            .setRequired(true)
+        )
+    ),
 
   async execute(interaction) {
     const sub = interaction.options.getSubcommand();
@@ -104,6 +115,53 @@ module.exports = {
           `🎮 Roblox vinculado: ${linked ? `\`${linked}\`` : "Não"}\n` +
           `🎁 Recompensa configurada: ${rewardToText(reward)}`,
       });
+      return;
+    }
+
+    if (sub === "forcar_resgate") {
+      if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
+        await interaction.reply({
+          ephemeral: true,
+          content: "❌ Apenas administradores podem usar este comando.",
+        });
+        return;
+      }
+
+      await interaction.deferReply({ ephemeral: true });
+      const targetUser = interaction.options.getUser("usuario", true);
+      const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+      if (!targetMember) {
+        await interaction.editReply("❌ Não consegui encontrar este usuário no servidor.");
+        return;
+      }
+      if (!targetMember.premiumSinceTimestamp) {
+        await interaction.editReply("❌ Este usuário não está impulsionando o servidor no momento.");
+        return;
+      }
+
+      const linked = boosterState.getLinkedRobloxUserId(gid, targetUser.id);
+      if (!linked) {
+        await interaction.editReply("❌ Este usuário ainda não vinculou o Roblox.");
+        return;
+      }
+
+      boosterState.clearRewardMark(gid, targetUser.id);
+      const result = await processNitroBoostStart(targetMember, `forcado por ${interaction.user.id}`);
+      if (result.rewarded) {
+        await interaction.editReply(
+          `✅ Reprocessado com sucesso para <@${targetUser.id}>.\nRoblox: \`${linked}\`.\nRecompensa: ${rewardToText(
+            reward
+          )}.`
+        );
+        return;
+      }
+      if (result.duplicate) {
+        await interaction.editReply(
+          "⚠️ Ainda retornou como duplicado. Se continuar, me avise para eu adicionar um bypass administrativo direto na fila."
+        );
+        return;
+      }
+      await interaction.editReply("❌ Não consegui reprocessar agora. Tente novamente em alguns segundos.");
     }
   },
 };
