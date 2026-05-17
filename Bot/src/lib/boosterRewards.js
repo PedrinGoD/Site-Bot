@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const guildConfig = require("./guildConfig");
 const robloxGrants = require("./robloxGrants");
 const boosterState = require("./boosterRewardsState");
@@ -50,6 +50,31 @@ async function sendNitroLog(member, cfg, title, description, color = 0xf47fff) {
     });
   } catch (e) {
     console.error("[nitro] erro ao enviar log:", e);
+  }
+}
+
+async function sendNitroLinkPrompt(member, cfg, rewardText) {
+  const channelId = resolveLogChannelId(member, cfg);
+  if (!channelId) return;
+  try {
+    const ch = await member.client.channels.fetch(channelId);
+    if (!ch || !ch.isTextBased()) return;
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("booster_link")
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji("🎮")
+        .setLabel("Informar Roblox e resgatar")
+    );
+    await ch.send({
+      content:
+        `<@${member.id}>, para liberar sua recompensa de Nitro (${rewardText}), ` +
+        "clique no botão abaixo e informe seu usuário Roblox.",
+      components: [row],
+      allowedMentions: { users: [member.id] },
+    });
+  } catch (e) {
+    console.error("[nitro] erro ao enviar prompt de vínculo:", e);
   }
 }
 
@@ -174,6 +199,7 @@ async function processNitroBoostStart(member, reason = "evento") {
       `Obrigado por impulsionar o servidor! Para receber sua recompensa no jogo (${rewardToText(reward)}), use no servidor:\n` +
         "`/booster vincular` e informe seu usuário/ID Roblox."
     );
+    await sendNitroLinkPrompt(member, cfg, rewardToText(reward));
     return { ok: true, missingLink: true };
   }
 

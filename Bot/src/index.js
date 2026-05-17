@@ -14,6 +14,8 @@ const {
 const { startHttpServer } = require("./server/http");
 const guildConfig = require("./lib/guildConfig");
 const { processNitroBoostStart } = require("./lib/boosterRewards");
+const boosterState = require("./lib/boosterRewardsState");
+const { resolveRobloxUserId } = require("./lib/resolveRobloxUser");
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -56,6 +58,47 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     if (interaction.isModalSubmit()) {
+      if (interaction.customId === "booster_link_modal") {
+        if (!interaction.guildId) {
+          await interaction.reply({
+            ephemeral: true,
+            content: "❌ Este resgate precisa ser feito dentro do servidor.",
+          });
+          return;
+        }
+
+        await interaction.deferReply({ ephemeral: true });
+        const raw = String(interaction.fields.getTextInputValue("booster_roblox") || "");
+        const resolved = await resolveRobloxUserId(raw);
+        if (resolved.error) {
+          await interaction.editReply(`❌ ${resolved.error}`);
+          return;
+        }
+
+        boosterState.setLinkedRobloxUserId(interaction.guildId, interaction.user.id, resolved.userId);
+        const member = await interaction.guild.members.fetch(interaction.user.id);
+        const result = await processNitroBoostStart(member, "modal booster_link");
+
+        if (result.rewarded) {
+          await interaction.editReply(
+            `✅ Roblox vinculado (\`${resolved.userId}\`) e recompensa enfileirada com sucesso!`
+          );
+        } else if (result.duplicate) {
+          await interaction.editReply(
+            `✅ Roblox vinculado (\`${resolved.userId}\`). Sua recompensa deste impulso já havia sido registrada.`
+          );
+        } else if (result.not_boosting) {
+          await interaction.editReply(
+            `✅ Roblox vinculado (\`${resolved.userId}\`), mas você não está impulsionando no momento.`
+          );
+        } else {
+          await interaction.editReply(
+            `✅ Roblox vinculado (\`${resolved.userId}\`). Se necessário, use \`/booster resgatar\`.`
+          );
+        }
+        return;
+      }
+
       if (interaction.customId === "verify_modal") {
         const cfg = guildConfig.get(interaction.guildId);
         if (!cfg.visitorRoleId || !cfg.playerRoleId) {
@@ -136,6 +179,24 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     if (interaction.isButton()) {
+      if (interaction.customId === "booster_link") {
+        const modal = new ModalBuilder()
+          .setCustomId("booster_link_modal")
+          .setTitle("Resgatar recompensa Nitro");
+        const robloxInput = new TextInputBuilder()
+          .setCustomId("booster_roblox")
+          .setLabel("Seu usuário ou ID Roblox")
+          .setStyle(TextInputStyle.Short)
+          .setMinLength(3)
+          .setMaxLength(24)
+          .setRequired(true)
+          .setPlaceholder("Ex.: Cheech ou 123456789");
+        const row = new ActionRowBuilder().addComponents(robloxInput);
+        modal.addComponents(row);
+        await interaction.showModal(modal);
+        return;
+      }
+
       if (interaction.customId === "verify_accept") {
         const modal = new ModalBuilder()
           .setCustomId("verify_modal")
