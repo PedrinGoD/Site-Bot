@@ -168,7 +168,7 @@ module.exports = {
       const msg = await ch.send({
         content:
           "## Verificação de acesso\n" +
-          "Clique no botão abaixo para confirmar e liberar seu acesso aos canais do servidor.",
+          "Clique no botão abaixo, informe como deseja aparecer no servidor e conclua sua verificação para liberar os canais.",
         components: [row],
       });
 
