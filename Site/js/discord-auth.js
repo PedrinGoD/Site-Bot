@@ -66,24 +66,18 @@
     slot.id = "gear-discord-auth";
 
     function render() {
-      slot.innerHTML = "";
       var t = getToken();
       if (!t) {
-        var a = document.createElement("a");
-        a.className = "nav__discord-btn";
-        a.href = loginUrl(currentPageName());
-        a.textContent = "Entrar com Discord";
-        slot.appendChild(a);
+        slot.innerHTML = "";
+        slot.style.display = "none";
         return;
       }
+      slot.style.display = "flex";
       fetchMe().then(function (me) {
         slot.innerHTML = "";
         if (!me || !me.ok) {
-          var a2 = document.createElement("a");
-          a2.className = "nav__discord-btn";
-          a2.href = loginUrl(currentPageName());
-          a2.textContent = "Entrar com Discord";
-          slot.appendChild(a2);
+          setToken(null);
+          slot.style.display = "none";
           return;
         }
         var span = document.createElement("span");
@@ -91,25 +85,12 @@
         if (me.avatarUrl) {
           var img = document.createElement("img");
           img.src = me.avatarUrl;
-          img.alt = "";
+          img.alt = "Perfil Discord";
           img.width = 28;
           img.height = 28;
           img.className = "nav__discord-avatar";
           span.appendChild(img);
         }
-        var name = document.createElement("span");
-        name.className = "nav__discord-name";
-        name.textContent = me.global_name || me.username || me.id;
-        span.appendChild(name);
-        var out = document.createElement("button");
-        out.type = "button";
-        out.className = "nav__discord-out";
-        out.textContent = "Sair";
-        out.addEventListener("click", function () {
-          logout();
-          render();
-        });
-        span.appendChild(out);
         slot.appendChild(span);
       });
     }
