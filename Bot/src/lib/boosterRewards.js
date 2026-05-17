@@ -104,12 +104,12 @@ async function tryDm(member, text) {
   }
 }
 
-function queueRewardGrants({ guildId, discordUserId, robloxUserId, reward, boostKey }) {
+function queueRewardGrants({ guildId, discordUserId, robloxUserId, reward, claimKey }) {
   const refs = [];
 
   if (reward.vipTier && reward.vipDays > 0) {
     const ref = robloxGrants.queueGrantAfterPayment({
-      stripeSessionId: `nitro:${guildId}:${discordUserId}:${boostKey}:vip`,
+      stripeSessionId: `nitro:${guildId}:${discordUserId}:${claimKey}:vip`,
       robloxUserId,
       grantType: "vip",
       grantTier: reward.vipTier,
@@ -121,7 +121,7 @@ function queueRewardGrants({ guildId, discordUserId, robloxUserId, reward, boost
   if (reward.money > 0 || reward.xp > 0) {
     if (reward.money > 0 && reward.xp > 0) {
       const ref = robloxGrants.queueGrantAfterPayment({
-        stripeSessionId: `nitro:${guildId}:${discordUserId}:${boostKey}:economy`,
+        stripeSessionId: `nitro:${guildId}:${discordUserId}:${claimKey}:economy`,
         robloxUserId,
         grantType: "economy",
         grantMoneyAmount: reward.money,
@@ -130,7 +130,7 @@ function queueRewardGrants({ guildId, discordUserId, robloxUserId, reward, boost
       if (ref) refs.push(ref);
     } else if (reward.money > 0) {
       const ref = robloxGrants.queueGrantAfterPayment({
-        stripeSessionId: `nitro:${guildId}:${discordUserId}:${boostKey}:money`,
+        stripeSessionId: `nitro:${guildId}:${discordUserId}:${claimKey}:money`,
         robloxUserId,
         grantType: "currency",
         grantMoneyAmount: reward.money,
@@ -138,7 +138,7 @@ function queueRewardGrants({ guildId, discordUserId, robloxUserId, reward, boost
       if (ref) refs.push(ref);
     } else if (reward.xp > 0) {
       const ref = robloxGrants.queueGrantAfterPayment({
-        stripeSessionId: `nitro:${guildId}:${discordUserId}:${boostKey}:xp`,
+        stripeSessionId: `nitro:${guildId}:${discordUserId}:${claimKey}:xp`,
         robloxUserId,
         grantType: "xp",
         grantXpAmount: reward.xp,
@@ -164,19 +164,21 @@ function rewardToText(reward) {
   return parts.length ? parts.join(" + ") : "Sem recompensa in-game configurada";
 }
 
-async function processNitroBoostStart(member, reason = "evento") {
+async function processNitroBoostStart(member, reason = "evento", options = {}) {
   if (!member || !member.guild || member.user?.bot) return { ok: false, reason: "invalid_member" };
   if (!member.premiumSinceTimestamp) return { ok: false, reason: "not_boosting" };
 
+  const force = Boolean(options && options.force);
   const guildId = member.guild.id;
   const discordUserId = member.id;
   const cfg = guildConfig.get(guildId);
   const boostKey = buildBoostKey(member);
+  const claimKey = force ? `${boostKey}:force:${Date.now()}` : boostKey;
   const reward = parseRewardConfig(cfg);
 
   await ensureBoosterRole(member, cfg);
 
-  if (boosterState.hasRewardForBoost(guildId, discordUserId, boostKey)) {
+  if (!force && boosterState.hasRewardForBoost(guildId, discordUserId, boostKey)) {
     return { ok: true, duplicate: true };
   }
 
@@ -209,7 +211,7 @@ async function processNitroBoostStart(member, reason = "evento") {
     return { ok: true, missingLink: true };
   }
 
-  const refs = queueRewardGrants({ guildId, discordUserId, robloxUserId, reward, boostKey });
+  const refs = queueRewardGrants({ guildId, discordUserId, robloxUserId, reward, claimKey });
   if (!refs.length) {
     return { ok: false, reason: "queue_failed" };
   }

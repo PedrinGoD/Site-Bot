@@ -146,7 +146,11 @@ module.exports = {
       }
 
       boosterState.clearRewardMark(gid, targetUser.id);
-      const result = await processNitroBoostStart(targetMember, `forcado por ${interaction.user.id}`);
+      const result = await processNitroBoostStart(
+        targetMember,
+        `forcado por ${interaction.user.id}`,
+        { force: true }
+      );
       if (result.rewarded) {
         await interaction.editReply(
           `✅ Reprocessado com sucesso para <@${targetUser.id}>.\nRoblox: \`${linked}\`.\nRecompensa: ${rewardToText(
@@ -161,7 +165,9 @@ module.exports = {
         );
         return;
       }
-      await interaction.editReply("❌ Não consegui reprocessar agora. Tente novamente em alguns segundos.");
+      await interaction.editReply(
+        `❌ Não consegui reprocessar agora (${result.reason || "erro_desconhecido"}). Tente novamente em alguns segundos.`
+      );
     }
   },
 };
