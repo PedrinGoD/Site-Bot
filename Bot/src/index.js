@@ -89,11 +89,11 @@ client.on("interactionCreate", async (interaction) => {
           );
         } else if (result.not_boosting) {
           await interaction.editReply(
-            `✅ Roblox vinculado (\`${resolved.userId}\`), mas você não está impulsionando no momento.`
+            `✅ Roblox vinculado (\`${resolved.userId}\`). Quando impulsionar, clique em **Resgatar recompensa** no painel booster.`
           );
         } else {
           await interaction.editReply(
-            `✅ Roblox vinculado (\`${resolved.userId}\`). Se necessário, use \`/booster resgatar\`.`
+            `✅ Roblox vinculado (\`${resolved.userId}\`). Se necessário, clique em **Resgatar recompensa** no painel booster.`
           );
         }
         return;
@@ -179,6 +179,45 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     if (interaction.isButton()) {
+      if (interaction.customId === "booster_claim") {
+        if (!interaction.guildId) {
+          await interaction.reply({
+            ephemeral: true,
+            content: "❌ Este botão funciona apenas dentro do servidor.",
+          });
+          return;
+        }
+        await interaction.deferReply({ ephemeral: true });
+
+        const member = await interaction.guild.members.fetch(interaction.user.id);
+        if (!member.premiumSinceTimestamp) {
+          await interaction.editReply(
+            "❌ Você não está impulsionando o servidor no momento. Assim que impulsionar, volte e clique novamente."
+          );
+          return;
+        }
+
+        const linked = boosterState.getLinkedRobloxUserId(interaction.guildId, interaction.user.id);
+        if (!linked) {
+          await interaction.editReply(
+            "⚠️ Você ainda não vinculou o Roblox. Clique no botão **Vincular Roblox** primeiro."
+          );
+          return;
+        }
+
+        const result = await processNitroBoostStart(member, "botão booster_claim");
+        if (result.rewarded) {
+          await interaction.editReply("✅ Recompensa enviada para a fila do jogo com sucesso!");
+        } else if (result.duplicate) {
+          await interaction.editReply("✅ Esta recompensa deste impulso já havia sido registrada.");
+        } else if (result.noRewardConfigured) {
+          await interaction.editReply("⚠️ O servidor ainda não configurou recompensa Nitro in-game.");
+        } else {
+          await interaction.editReply("❌ Não consegui processar agora. Tente novamente em alguns segundos.");
+        }
+        return;
+      }
+
       if (interaction.customId === "booster_link") {
         const modal = new ModalBuilder()
           .setCustomId("booster_link_modal")

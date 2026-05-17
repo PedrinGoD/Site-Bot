@@ -10,6 +10,45 @@ const {
 const guildConfig = require("../lib/guildConfig");
 const { normalizeVipTier, parseRewardConfig, rewardToText } = require("../lib/boosterRewards");
 
+function buildBoosterPanelPayload(rewardText) {
+  const embed = new EmbedBuilder()
+    .setColor(0xf47fff)
+    .setTitle("🚀 Painel Booster Nitro")
+    .setDescription(
+      "Impulsionou o servidor? Faça o vínculo Roblox e resgate por aqui.\n\n" +
+        `**Recompensa atual:** ${rewardText}`
+    )
+    .addFields(
+      {
+        name: "1) Vincular Roblox",
+        value: "Clique em **Vincular Roblox**, informe seu @usuario/ID e confirme.",
+      },
+      {
+        name: "2) Resgatar recompensa",
+        value: "Depois do vínculo, clique em **Resgatar recompensa** para receber no jogo.",
+      }
+    );
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("booster_link")
+      .setStyle(ButtonStyle.Primary)
+      .setEmoji("🎮")
+      .setLabel("Vincular Roblox"),
+    new ButtonBuilder()
+      .setCustomId("booster_claim")
+      .setStyle(ButtonStyle.Success)
+      .setEmoji("🎁")
+      .setLabel("Resgatar recompensa")
+  );
+
+  return {
+    content: "## 💎 Central de Booster",
+    embeds: [embed],
+    components: [row],
+  };
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("setup")
@@ -193,6 +232,29 @@ module.exports = {
       guildConfig.update(gid, patch);
       const updatedCfg = guildConfig.get(gid);
       const reward = parseRewardConfig(updatedCfg);
+      const panelPayload = buildBoosterPanelPayload(rewardToText(reward));
+
+      let panelMessageId = "";
+      try {
+        if (updatedCfg.boosterPanelMessageId) {
+          const oldMsg = await ch.messages.fetch(updatedCfg.boosterPanelMessageId).catch(() => null);
+          if (oldMsg) {
+            await oldMsg.edit(panelPayload);
+            panelMessageId = oldMsg.id;
+          }
+        }
+        if (!panelMessageId) {
+          const panelMsg = await ch.send(panelPayload);
+          panelMessageId = panelMsg.id;
+        }
+      } catch (e) {
+        console.error("[setup nitro] erro ao criar/editar painel booster:", e);
+      }
+
+      if (panelMessageId) {
+        guildConfig.update(gid, { boosterPanelMessageId: panelMessageId });
+      }
+
       const boosterRoleLine = updatedCfg.boosterRoleId
         ? `\n• Cargo Booster: <@&${updatedCfg.boosterRoleId}>`
         : "\n• Cargo Booster: não configurado";
@@ -201,7 +263,8 @@ module.exports = {
         content:
           `✅ Log Nitro/eventos: ${ch}.${boosterRoleLine}\n` +
           `• Recompensa Nitro: ${rewardToText(reward)}\n` +
-          "Use `/booster vincular` para os jogadores vincularem o Roblox.",
+          `• Painel booster: ${panelMessageId ? `https://discord.com/channels/${interaction.guildId}/${ch.id}/${panelMessageId}` : "não foi possível criar agora"}\n` +
+          "Fluxo principal: usar os botões do painel (sem comando manual).",
       });
       return;
     }
@@ -261,6 +324,10 @@ module.exports = {
     if (sub === "ver") {
       const c = guildConfig.get(gid);
       const nitroReward = parseRewardConfig(c);
+      const panelUrl =
+        c.boosterPanelMessageId && c.nitroLogChannelId
+          ? `https://discord.com/channels/${gid}/${c.nitroLogChannelId}/${c.boosterPanelMessageId}`
+          : "";
       const embed = new EmbedBuilder()
         .setTitle("Configuração deste servidor")
         .addFields(
@@ -281,7 +348,8 @@ module.exports = {
             value:
               (c.nitroLogChannelId ? `Canal: <#${c.nitroLogChannelId}>` : "Canal: não configurado") +
               `\nCargo Booster: ${c.boosterRoleId ? `<@&${c.boosterRoleId}>` : "não configurado"}` +
-              `\nRecompensa: ${rewardToText(nitroReward)}`,
+              `\nRecompensa: ${rewardToText(nitroReward)}` +
+              `\nPainel: ${panelUrl || "não configurado"}`,
           },
           {
             name: "Log detalhado (staff / Stripe)",

@@ -24,6 +24,7 @@ function ensureFile() {
  *  nitroRewardVipDays?: number,
  *  nitroRewardMoney?: number,
  *  nitroRewardXp?: number,
+ *  boosterPanelMessageId?: string,
  *  fullTransactionLogChannelId?: string,
  *  verificationChannelId?: string,
  *  visitorRoleId?: string,

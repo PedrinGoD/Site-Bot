@@ -64,12 +64,17 @@ async function sendNitroLinkPrompt(member, cfg, rewardText) {
         .setCustomId("booster_link")
         .setStyle(ButtonStyle.Primary)
         .setEmoji("🎮")
-        .setLabel("Informar Roblox e resgatar")
+        .setLabel("Vincular Roblox"),
+      new ButtonBuilder()
+        .setCustomId("booster_claim")
+        .setStyle(ButtonStyle.Success)
+        .setEmoji("🎁")
+        .setLabel("Resgatar recompensa")
     );
     await ch.send({
       content:
         `<@${member.id}>, para liberar sua recompensa de Nitro (${rewardText}), ` +
-        "clique no botão abaixo e informe seu usuário Roblox.",
+        "clique em **Vincular Roblox** e depois em **Resgatar recompensa**.",
       components: [row],
       allowedMentions: { users: [member.id] },
     });
